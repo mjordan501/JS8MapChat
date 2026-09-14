@@ -1,0 +1,99 @@
+JS8Map - building a Linux binary that runs on older distributions
+=================================================================
+Established 2026-08-29 on Acer1 (Linux Mint 22.2, glibc 2.39).
+
+
+WHY THIS EXISTS
+---------------
+PyInstaller does not bundle the C library, and glibc only works forwards: a
+binary built on a newer system will not start on an older one. Building on
+Mint 22 gave a floor of GLIBC 2.38, which excluded Ubuntu 22.04, Debian 12,
+Mint 21 and Mint 20 - most of the machines other operators actually run.
+
+The fix does not touch the source, the tarball, install.sh or
+make_js8map_package.sh. Same code, same package layout, built on an older
+system inside a container.
+
+
+WHAT THE BOX IS
+---------------
+Containerfile builds an Ubuntu 20.04 image (glibc 2.31) carrying Python
+3.12.3 compiled from source and PyInstaller 6.20.0 - the same versions Acer1
+itself has, so the age of the system libraries is the ONLY thing that differs
+from the previously proven build.
+
+Python MUST be configured with --enable-shared. PyInstaller cannot package a
+statically built interpreter and fails with a clear message if you forget.
+
+Requires podman on the build machine. Nothing else is installed on the host.
+
+
+THE RESULT, MEASURED
+--------------------
+Floor came down from GLIBC 2.38 to 2.30. That covers:
+    Linux Mint 20, 21, 22
+    Ubuntu 20.04, 22.04, 24.04 and newer
+    Debian 11, 12
+The one library setting the floor is Python's own libpython.
+
+Raspberry Pi is NOT covered and cannot be. A Pi is ARM; no x86 build will
+ever start on it at any glibc version. That needs separate hardware.
+
+
+HOW TO MEASURE THE FLOOR (do this after any rebuild)
+----------------------------------------------------
+The executable stub reports something like GLIBC_2.14 and is MISLEADING.
+Do not stop there. The real requirement is carried by the libraries the
+onefile build unpacks to /tmp/_MEI* when it launches, and that folder is
+deleted the instant the program closes. measure_floor.sh starts the program,
+reads that folder while it is open, then closes it.
+
+
+THE EMOJI CRASH - THE HARD ONE
+------------------------------
+A build made on 20.04 bundles 20.04's text-drawing libraries, and the libXft
+in 20.04 crashes outright when asked to render a COLOUR EMOJI font. JS8Map
+draws emoji on its buttons, so it dies before its window ever appears:
+
+    X Error of failed request:  BadLength
+    Major opcode of failed request:  139 (RENDER)
+    Minor opcode of failed request:  20 (RenderAddGlyphs)
+
+The symptom is deeply misleading. The SAME package file works on a machine
+with no emoji font installed and fails on one that has it. It passed in a
+bare container and failed on the developer's own desktop, repeatedly, which
+read as inconsistency and was not.
+
+Confirmed by launching with the emoji font rejected for that run only:
+
+    FONTCONFIG_FILE=/tmp/noemoji.conf ./JS8Map      -> window opens
+
+FIXED IN JS8Map_linux.spec: the text-drawing stack is filtered out of the
+bundle so the operator's own copies are used. Every Linux desktop has them.
+DO NOT add them back. See the note at the top of that file.
+
+
+STRIPPING - NOT ACTUALLY RULED OUT
+----------------------------------
+A source-compiled Python keeps its debugging symbols, which pushed the
+package from 15 MB to 28 MB. Two attempts to strip them were abandoned
+because the resulting builds would not start - but that failure was the emoji
+crash above, NOT the stripping. It was misdiagnosed at the time.
+
+So stripping may well be fine, and would bring the package back to about
+14-17 MB. It has simply never been tested against a build that has the emoji
+fix in it. Anyone revisiting this should retest rather than trust the
+"abandoned" label.
+
+
+WHAT WAS PROVEN, 2026-08-29
+---------------------------
+Same build passed all three:
+  - runs on Acer1's own desktop
+  - runs on a bare Ubuntu 20.04 container with NO Python and NO tkinter
+    installed, from an empty home folder: unpacks, install.sh, first-run
+    wizard appears
+  - floor measured at 2.30
+
+That second one also answers a long-standing unknown: the packaged binary
+needs no tkinter system package on the operator's machine.

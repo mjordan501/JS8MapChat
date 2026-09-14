@@ -1,0 +1,103 @@
+JS8FastChat <-> JS8Map — APP-SWITCH BUTTON — BUILD COMPLETE
+===========================================================
+Date: 2026-06-19
+Status: JS8Map side now BUILT. FastChat side was already done (prev session).
+        All files parse clean; port-discovery round-trip + headless Tk button
+        smoke-tested here. NOT yet field-tested on a real two-app Windows setup
+        (see TEST PLAN in the original handoff — steps a–g still to run live).
+
+This completes the one real wrinkle from the handoff (port discovery) plus the
+three JS8Map-side endpoints and the in-page button.
+
+
+WHAT CHANGED THIS SESSION
+=========================
+
+--- JS8Map side (JS8Map_side/) -------------------------------------------------
+
+JS8Map.py  (3 additions, all inside the existing _Handler / _ensure_server)
+  1. do_POST: new  /raise_window  endpoint.
+     - Brings JS8Map's OWN tkinter window to the front by calling the existing
+       _focus_callback (same deiconify+lift+focus_force, marshalled to the GUI
+       thread via root.after). This is what FastChat's button hits.
+  2. do_POST: new  /raise_window_fastchat  endpoint.
+     - Mirrors the /fastchat_handoff pattern: atomically writes
+       js8map_raise_fastchat.json into _DATA_DIR (temp + os.replace, UTF-8 no
+       BOM), body {"timestamp": "<ISO8601 UTC>"}, NO callsign. FastChat's
+       IntentPoller already picks this up and raises its main window.
+  3. _ensure_server (right after the server thread starts): writes
+     js8map_server.json = {"port": <_server_port>, "timestamp": "<ISO8601 UTC>"}
+     into _DATA_DIR atomically. THIS IS THE PORT-DISCOVERY FIX. Rewritten every
+     launch, so a restart on a new random port is picked up by reading fresh.
+     Failure is non-fatal (map still works; only the FastChat->JS8Map button
+     loses its target until the next good write).
+
+index.html
+  - New raised button in #topbar, inserted immediately before the logo <img>
+    (the logo has margin-left:auto, so the button sits at the right edge just
+    before it). Shows fastchat_icon.png. onclick -> openFastChatWindow().
+
+app.css
+  - New .appswitch-btn / .appswitch-icon styles: raised/3D beveled push-button
+    (gradient + top/bottom border bevel + drop shadow), hover (blue ring) and
+    :active (pressed/sunken) states, plus a light-theme variant. Uses existing
+    :root design tokens (--surface, --card, --border, --blue). Deliberately
+    distinct from the flat pill .map-toggle-btn filter buttons.
+
+app.js
+  - New openFastChatWindow(): POST to /raise_window_fastchat (relative URL — no
+    port needed this direction). Fire-and-forget with a 3 s timeout; errors are
+    swallowed quietly (success IS the other window appearing, so there's no
+    status target to update — same spirit as the existing /refresh calls).
+
+JS8Map.spec
+  - UNCHANGED (already lists fastchat_icon.png in datas from the icon-locked
+    base). Included here only so you have the matching .spec in one place.
+    _copy_static_assets in JS8Map.py also already lists app.js + fastchat_icon.png.
+
+--- FastChat side (FastChat_side/) — only the files that changed ---------------
+
+constants.py
+  - Added SERVER_FILENAME = "js8map_server.json" (the port-discovery file).
+
+services/intent_poller.py
+  - Imports SERVER_FILENAME.
+  - New find_server_file()  — mirrors find_raise_file(); quiet when absent.
+  - New read_server_port()  — reads the file FRESH (never cached), BOM-tolerant,
+    validates the port is an int in 1..65535, returns int or None.
+
+ui/main_window.py
+  - Imports read_server_port alongside IntentPoller.
+  - open_js8map() is no longer a stub: it calls read_server_port() on the bg
+    thread, and if a port is found POSTs to http://127.0.0.1:<port>/raise_window.
+    Missing file -> "JS8Map not reachable (is it running?)." Connection refused
+    -> "JS8Map not reachable (it may have closed or restarted)." Still bg-thread
+    + short timeout, so no hang. The placeholder port loop (8765/8000/8080) is
+    gone.
+
+
+VERIFICATION DONE HERE (static + functional, NOT live field test)
+=================================================================
+  - ast.parse: JS8Map.py + all 23 FastChat .py files -> clean.
+  - node --check app.js -> clean.
+  - Port-discovery round-trip: wrote js8map_server.json exactly as JS8Map now
+    does, read it back via read_server_port() -> correct port. Edge cases pass:
+    missing file -> None, garbage port -> None, UTF-8 BOM file -> parsed fine.
+  - Headless Tk (Xvfb): js8map_icon.png loads as a 32x32 PhotoImage, the raised
+    button realizes, and the deiconify/lift/topmost/focus_force raise sequence
+    runs without error.
+
+
+STILL TO DO (operator, on a real two-app Windows setup)
+=======================================================
+Run the original handoff TEST PLAN steps a–g, in particular:
+  b. FastChat "8" button -> JS8Map comes forward (HTTP path via port file).
+  d. Kill JS8Map, click FastChat's button -> graceful "not reachable", no hang.
+  e. Restart JS8Map (new random port), click again -> still works (proves the
+     port file is re-read fresh, not cached).
+  g. Rebuild JS8Map.exe; confirm fastchat_icon.png + the page button survive the
+     PyInstaller bundle + runtime copy.
+
+Reminder from the ground rules: JS8Map.py changes need the .exe REBUILT.
+index.html / app.css / app.js are copied out at runtime (no rebuild needed for
+those three alone).

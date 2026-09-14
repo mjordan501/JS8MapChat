@@ -1,0 +1,156 @@
+# ==============================================================================
+#  JS8MapChat — .gitignore
+#  Lives at:  C:\Users\KW3KW\Documents\Claude AI\JS8MapChat\.gitignore
+#  Created 2026-07-14 (ticket #8 — first version control in this project)
+#
+#  RULE OF THUMB: git tracks SOURCE. It does not track builds, runtime state,
+#  data, or backups. If you can rebuild it or the app rewrites it, it goes here.
+# ==============================================================================
+
+
+# ------------------------------------------------------------------------------
+#  1. THE BACKUP TREES.  THE MOST IMPORTANT LINES IN THIS FILE.
+# ------------------------------------------------------------------------------
+#  "Backup Version\" holds a FULL second copy of the FastChat tree (under
+#  July 7th\). See H1b in the architecture doc.  If it enters the repo, every
+#  source file exists TWICE in history, every grep goes ambiguous, and the
+#  ghost-copy problem is preserved forever in version control.
+#
+#  THE FOLDER STAYS ON DISK. It is the operator's scratch backup. Git just
+#  never looks at it.  (Once git is trusted, this folder becomes redundant —
+#  that is the POINT of #8. Retire it when you're ready, not before.)
+
+Backup Version/
+BACKUP VERSIONS/
+
+
+# ------------------------------------------------------------------------------
+#  2. BUILD OUTPUT — rebuildable, and huge
+# ------------------------------------------------------------------------------
+#  A onefile PyInstaller exe is tens of MB. One per commit will bloat this
+#  repo fast, and the exe is NOT the truth — the source + the .spec is.
+#  Build_JS8FastChat.bat wipes build\ and dist\ every run anyway.
+
+build/
+dist/
+installer_output/
+*.exe
+*.msi
+
+__pycache__/
+*.py[cod]
+*.pyo
+
+
+# ------------------------------------------------------------------------------
+#  3. THE SHARED MAILBOX — runtime state, not source
+# ------------------------------------------------------------------------------
+#  These six JSON files are written and deleted by the running apps, constantly.
+#  Committing them would mean a diff on every single launch.
+#  THE CONTRACT (who writes what) lives in the architecture doc §3 — that IS
+#  tracked. The files themselves are not.
+
+JS8MapChat Shared/
+js8fastchat_intent.json
+js8map_raise_fastchat.json
+js8map_server.json
+js8map_outgoing_tx.json
+js8map_tx_lease.json
+js8fastchat_alive.json
+
+
+# ------------------------------------------------------------------------------
+#  4. PER-USER APP STATE
+# ------------------------------------------------------------------------------
+#  Post-#26 the LIVE copies of these live in %LOCALAPPDATA%\JS8MapChat\FastChat\
+#  (outside the repo entirely — good). The copies still sitting beside the code
+#  are DECOYS: nothing reads them. Do not track a decoy.
+
+mjs_js8fastchat_3_2_config.json
+mjs_js8maps_3_0_config.json
+js8fastchat_layout_3_2.json
+js8fastchat_tx_history_3_3.json
+js8fastchat_capture_3_4.json
+ham_map_config.json
+map_window_profile/
+
+
+# ------------------------------------------------------------------------------
+#  5. LOGS AND DATABASES — data, not code
+# ------------------------------------------------------------------------------
+
+*.log
+*.db
+*.sqlite
+*.sqlite3
+
+
+# ------------------------------------------------------------------------------
+#  6. ROLLBACK COPIES
+# ------------------------------------------------------------------------------
+#  constants_BACKUP_pre26.py.bak, JS8Map_BACKUP_pre_42patch.py.bak, etc.
+#  These exist BECAUSE there was no git. They are the thing git replaces.
+#  Keep them on disk for now (they are a working rollback). Don't track them —
+#  a tracked .bak is just a confusing duplicate of a file git already has.
+
+*.bak
+*.tmp
+*.orig
+*~
+
+
+# ------------------------------------------------------------------------------
+#  7. WINDOWS / EDITOR NOISE
+# ------------------------------------------------------------------------------
+
+Thumbs.db
+desktop.ini
+Desktop.ini
+.vscode/
+.idea/
+
+
+# ==============================================================================
+#  DELIBERATELY **TRACKED** — do not add these to the list above
+# ==============================================================================
+#   JS8Map.py, JS8FastChat_Ver_3_5_7.py, js8fastchat\**\*.py   the source
+#   *.spec                     the build recipes — the exe is reproducible ONLY
+#                              from these. Losing a .spec loses the build.
+#   *.bat, *.vbs               the launchers. The VBS is the script-mode
+#                              fallback (§6). It is SOURCE. Never delete it.
+#   *.iss                      JS8Map.iss — the installer script.
+#   index.html, app.js, app.css, boot.js      the browser map UI
+#   *.ico, *.png               icons and bundled assets (small; the .spec ships
+#                              them; a lost icon means a wrong-icon exe — §13 #6)
+#   CHANGELOG.txt, BUILD_NOTES.txt, *.md      the durable docs
+#   js8_groups.json            user-assigned group colours — small, and the app
+#                              reads it. TRACKED ON PURPOSE, but see note below.
+#
+#  ⚠ UNPROVEN — decide these consciously, do not let them drift in:
+#   ham_map.html      generated at runtime? or a template the app copies out?
+#                     If GENERATED, add it above. NOT CHECKED. Look before you
+#                     commit a file the app rewrites on every launch.
+#   js8_groups.json   user data that happens to live beside the source. Tracked
+#                     for now because it is small and losing it loses his groups.
+#                     If it churns on every run, move it out.
+# ==============================================================================
+Zip Files/
+JS8Map Ver 1.75/boot.js
+js8_spots.db-shm
+js8_spots.db-wal
+*.db-shm
+*.db-wal
+
+# Scratch for this refactor - not part of the source tree
+/preflight_snapshot.json
+
+# user-assigned group colours -- churns on every sync/prune, holds the
+# operator's own groups. Untracked per the "move it out" note below.
+JS8Map Ver 1.75/js8_groups.json
+
+# Linux package output - 15 MB, rebuilt any time by make_js8map_package.sh
+*.tar.gz
+ 
+# Generated map output - rewritten on every render. Verified 2026-08-28: 
+# nothing in any .sh, .iss or .spec references it. Untracked per section 2. 
+JS8Map Ver 1.75/ham_map.html

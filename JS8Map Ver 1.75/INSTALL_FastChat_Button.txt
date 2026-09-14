@@ -1,0 +1,59 @@
+JS8Map -> JS8FastChat Handoff Button — Install Instructions
+===========================================================
+
+This adds a "⚡ FastChat" button to JS8Map's callsign popup. Clicking it opens
+that callsign in JS8FastChat (which must already be running). It completes the
+JS8Map -> FastChat handoff: the button tells JS8Map's local server to write the
+intent file that FastChat (Ver 3.5_4 and later) polls for.
+
+WHAT CHANGED (two files in YOUR JS8Map installation):
+
+  1. JS8Map.py
+     - Added a new /fastchat_handoff POST endpoint in the _Handler.do_POST
+       method, right after the existing /halt_tx handler. It writes
+       js8fastchat_intent.json into JS8Map's own data folder (the same folder
+       it writes js8_spots.db into), atomically and without a BOM.
+     - Added "from datetime import timezone as _dt_timezone" next to the
+       existing datetime import (the endpoint needs UTC).
+
+  2. app.js
+     - Added a "⚡ FastChat" button to the callsign popup, next to the existing
+       SNR? / HEARING? / MSG buttons.
+     - Added the openInFastChat() function that POSTs to /fastchat_handoff.
+
+HOW TO INSTALL:
+
+  These two files REPLACE the same-named files in your JS8Map installation.
+  Back up your originals first.
+
+  - Source-install (you run "python JS8Map.py"):
+      Replace JS8Map.py and app.js in your JS8Map folder. Done.
+
+  - Installed .exe build:
+      JS8Map.py is compiled into the .exe, so the Python change requires a
+      rebuild of JS8Map (Build_JS8Map.bat / the .spec). app.js is copied
+      out of the bundle at startup, so for the button alone you can replace
+      app.js beside ham_map.html in %LOCALAPPDATA%\JS8Map — BUT the button
+      will not work until the /fastchat_handoff endpoint exists, which needs
+      the JS8Map.py change compiled in. So for the .exe build: rebuild with
+      both files.
+
+HOW TO USE (once installed):
+
+  1. Start JS8FastChat (Ver 3.5_4 or later) — normal launcher.
+  2. Start JS8Map.
+  3. Click any callsign on the map to open its popup.
+  4. Click "⚡ FastChat".
+  5. JS8FastChat opens its popup pre-targeted to that callsign within ~2 sec.
+
+NOTES:
+
+  - JS8FastChat must already be running. This button does not launch it.
+  - The button reports status in the popup's small status line: "Opened CALL
+    in FastChat" on success, or an error if the JS8Map server didn't respond.
+  - JS8Map is the only writer of js8fastchat_intent.json; FastChat only reads
+    it. Matches the locked architecture (FastChat never writes JS8Map's data).
+  - Verified: JS8Map's write logic produces a file FastChat's reader accepts
+    (no-BOM, correct UTC timestamp, considered fresh). Both files parse/lint
+    cleanly. The full GUI behavior on Windows should be confirmed by you, as
+    always (tkinter/browser cannot be rendered in the build environment).

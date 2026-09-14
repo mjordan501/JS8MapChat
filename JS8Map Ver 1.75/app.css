@@ -1,0 +1,775 @@
+/* JS8Map — app.css  (extracted verbatim from MAP_HTML in v1.79_H;
+   only {color_css_vars} baked to current palette, {group_css} moved to runtime) */
+/* Google Fonts import removed 2026-08-26. JS8Map runs offline; this line
+   reached out to the internet on every map open and the browser waits on it
+   before painting. None of the three families it fetched were ever used --
+   they appear only in the FONT SWAP comment below as examples. --font-main
+   uses fonts already on the machine. */
+/* Segoe UI Variable is a Windows 11 system font — no import needed */
+:root{
+  /* ─────────────────────────────────────────────────────────────────
+     FONT SWAP — change --font-main here to update every element at once.
+     Examples:
+       'Segoe UI Variable','Segoe UI',sans-serif      ← current
+       'Exo 2',sans-serif
+       'Inter',sans-serif
+       'JetBrains Mono',monospace
+  ──────────────────────────────────────────────────────────────────── */
+  --font-main:'Yu Gothic Medium','YuGothic-Medium','Yu Gothic',YuGothic,sans-serif;
+
+  --bg:#080c10; --surface:#0e1520; --card:#131d2b;
+  --border:#1e2d40; --text:#d0dce8; --muted:#b8d4ee; --legend-gold:#FFD700;
+  --blue:#2979ff; --green:#26a869; --orange:#f5a623;
+  --red:#e84060; --accent:#1565c0;
+  --popup-bg:#0e1a28; --popup-border:#2a3f55;
+  /* ── Feature colors (generated from Python COLORS dict) ── */
+  --c-heard:#29b6f6;
+  --c-heard-light:#0277bd;
+  --c-heard-bg:#0d3a5c;
+  --c-heard-dot:#40C4FF;
+  --c-hearing_me:#26a869;
+  --c-hearing_me-light:#2e7d32;
+  --c-hearing_me-bg:#0d3d22;
+  --c-hearing_me-dot:#26a869;
+  --c-both:#f5a623;
+  --c-both-light:#e65100;
+  --c-both-bg:#3d2a08;
+  --c-both-dot:#f5a623;
+  --c-watched:#FFD700;
+  --c-watched-light:#f9a825;
+  --c-watched-bg:#3d3000;
+  --c-watched-dot:#FFD700;
+  --c-relay:#29b6f6;
+  --c-relay-light:#0277bd;
+  --c-relay-bg:#0d3a52;
+  --c-relay-dot:#29b6f6;
+  --c-hb:#FFD700;
+  --c-hb-light:#f9a825;
+  --c-hb-bg:#3d3000;
+  --c-hb-dot:#FFD700;
+}
+body.light-theme{
+  --bg:#f0f4f8; --surface:#ffffff; --card:#e8edf3;
+  --border:#c8d4e0; --text:#1a2a3a; --muted:#6080a0;
+  --popup-bg:#ffffff; --popup-border:#c0d0e0;
+  --legend-gold:#8B6400;  /* dark amber — readable outdoors on white */
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);
+     font-family:var(--font-main);height:100vh;
+     display:flex;flex-direction:column;overflow:hidden;
+     transition:background .3s,color .3s;}
+
+/* ── Top Bar ── */
+#topbar{
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:0 18px;
+  display:flex;align-items:center;gap:18px;
+  height:54px;flex-shrink:0;
+  transition:background .3s,border-color .3s;
+}
+.station-badge{display:flex;align-items:baseline;gap:10px;}
+.station-badge .call{
+  font-family:var(--font-main);
+  font-size:26px;font-weight:700;color:var(--red);
+  letter-spacing:3px;line-height:1;
+  text-shadow:0 0 20px rgba(232,64,96,0.3);
+}
+.station-badge .meta{font-size:12px;font-weight:700;color:var(--text);letter-spacing:.3px;opacity:0.95;font-family:var(--font-main);}
+.vbar{width:1px;background:var(--border);height:30px;flex-shrink:0;}
+.stats{display:flex;gap:2px;}
+.stat{
+  padding:6px 14px;border-radius:8px;text-align:center;cursor:pointer;
+  border:1.5px solid rgba(255,255,255,0.10);
+  background:rgba(255,255,255,0.03);
+  transition:all .18s ease;
+  position:relative;
+}
+.stat:hover{
+  background:rgba(255,255,255,0.08);
+  border-color:rgba(255,255,255,0.22);
+  transform:translateY(-1px);
+}
+.stat:active{transform:translateY(0);}
+.stat .num{font-family:var(--font-main);font-size:22px;font-weight:700;line-height:1;}
+.stat .lbl{font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;font-family:var(--font-main);transition:color .18s;}
+/* Active filter styling handled entirely by JS _applyStatStyle() */
+.c-blue{color:var(--blue);} .c-green{color:var(--green);}
+.c-orange{color:var(--orange);} .c-white{color:var(--text);}
+
+/* ── Filter Bar ── */
+#filterbar{
+  background:var(--card);border-bottom:1px solid var(--border);
+  padding:7px 18px;display:flex;align-items:center;
+  gap:10px;flex-shrink:0;transition:background .3s;
+}
+.f-label{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-right:4px;}
+.fbtn{
+  font-family:var(--font-main);font-size:13px;font-weight:700;
+  background:transparent;border:1px solid var(--border);
+  color:var(--muted);padding:5px 14px;border-radius:20px;
+  cursor:pointer;transition:all .15s;letter-spacing:.5px;
+}
+.fbtn:hover{color:var(--text);border-color:#4a6680;}
+.fbtn.on{color:var(--bg);border-color:transparent;}
+/* ── Map dropdown selects (popup / new / active / groups) — unified, theme-aware ── */
+.map-dropdown{
+  font-family:var(--font-main);font-size:14px;font-weight:700;
+  background:var(--surface);color:var(--text);
+  border:1.5px solid var(--border);border-radius:6px;
+  padding:5px 10px;cursor:pointer;outline:none;
+  transition:border-color .15s,background .3s,color .3s;
+}
+.map-dropdown:hover{border-color:var(--blue);}
+.map-dropdown option{background:var(--surface);color:var(--text);}
+.fbtn.on.f-all{background:#4a6680;color:#fff;}
+.fbtn.on.f-heard{background:var(--blue);}
+.fbtn.on.f-hearing{background:var(--green);}
+.fbtn.on.f-both{background:var(--orange);}
+.search{
+  background:var(--surface);border:1.5px solid rgba(41,121,255,0.5);
+  color:var(--text);padding:5px 30px 5px 14px;border-radius:20px;
+  font-size:14px;font-weight:600;font-family:var(--font-main);
+  outline:none;width:210px;transition:border-color .2s, box-shadow .2s;
+}
+.search:focus{
+  border-color:var(--blue);
+  box-shadow:0 0 0 2px rgba(41,121,255,0.25);
+}
+.search::placeholder{color:var(--muted);}
+
+/* ── Map ── */
+#map{flex:1;}
+
+/* ── Legend ── */
+#legend{
+  position:fixed;bottom:42px;right:10px;
+  background:var(--popup-bg);
+  border:1px solid var(--popup-border);
+  border-radius:10px;padding:10px 14px;
+  z-index:999;font-size:13px;
+  backdrop-filter:blur(6px);
+  min-width:160px;transition:background .3s;
+}
+#legend .l-head{
+  font-size:10px;text-transform:uppercase;
+  letter-spacing:1.2px;color:var(--muted);
+  margin-bottom:8px;font-weight:700;
+}
+.l-row{display:flex;align-items:center;gap:8px;margin:5px 0;font-weight:700;font-size:14px;}
+.l-dot{width:15px;height:15px;border-radius:50%;flex-shrink:0;border:2px solid rgba(255,255,255,0.4);}
+.l-line{display:flex;align-items:center;gap:8px;margin:5px 0;font-weight:700;font-size:14px;}
+.l-dashes{width:28px;height:2px;background:repeating-linear-gradient(90deg,var(--green) 0 4px,transparent 4px 8px);}
+.l-solid{width:28px;height:1px;background:var(--blue);opacity:.5;}
+
+/* ── Filter bar inline toggle buttons ── */
+.map-toggle-btn{
+  font-family:var(--font-main);font-size:13px;font-weight:700;
+  letter-spacing:.4px;padding:6px 14px;border-radius:20px;cursor:pointer;
+  transition:all .2s;white-space:nowrap;flex-shrink:0;
+  background:var(--surface);border:1.5px solid var(--border);color:var(--text);
+}
+.map-toggle-btn:hover{border-color:var(--blue);color:var(--blue);}
+
+/* ── App-switch button (topbar) — raised / 3D classic clickable ──
+   Brings JS8FastChat's window to the front. Shows the FastChat icon.
+   Deliberately beveled/raised so it reads as a distinct push-button,
+   not a flat pill like the filter-bar toggles. */
+.appswitch-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:38px;height:38px;padding:0;flex-shrink:0;
+  margin-right:12px;
+  cursor:pointer;border-radius:7px;
+  background:linear-gradient(180deg,var(--card),var(--surface));
+  border:1px solid var(--border);
+  border-top-color:rgba(255,255,255,0.18);
+  border-bottom-color:rgba(0,0,0,0.45);
+  box-shadow:0 2px 3px rgba(0,0,0,0.45),
+             inset 0 1px 0 rgba(255,255,255,0.12);
+  transition:box-shadow .08s ease, transform .08s ease,
+             border-color .15s ease, background .15s ease;
+}
+.appswitch-btn:hover{
+  border-color:var(--blue);
+  box-shadow:0 2px 5px rgba(0,0,0,0.5),
+             0 0 0 1px rgba(41,121,255,0.35),
+             inset 0 1px 0 rgba(255,255,255,0.16);
+}
+.appswitch-btn:active{
+  /* pressed: sink in, kill the raised shadow, nudge the icon down */
+  transform:translateY(1px);
+  background:linear-gradient(180deg,var(--surface),var(--card));
+  box-shadow:inset 0 2px 4px rgba(0,0,0,0.5);
+  border-top-color:rgba(0,0,0,0.4);
+  border-bottom-color:rgba(255,255,255,0.10);
+}
+.appswitch-btn:focus-visible{
+  outline:2px solid var(--blue);outline-offset:2px;
+}
+.appswitch-icon{
+  width:26px;height:26px;object-fit:contain;
+  pointer-events:none;display:block;
+}
+body.light-theme .appswitch-btn{
+  border-top-color:rgba(255,255,255,0.8);
+  border-bottom-color:rgba(0,0,0,0.22);
+  box-shadow:0 1px 2px rgba(0,0,0,0.18),
+             inset 0 1px 0 rgba(255,255,255,0.6);
+}
+body.light-theme .appswitch-btn:active{
+  box-shadow:inset 0 2px 4px rgba(0,0,0,0.25);
+}
+
+/* ── Scan-line refresh animation ── */
+/* scan timing — purely functional, no visuals */
+@keyframes scan-sweep{ 0%{left:0;} 100%{left:100%;} }
+@keyframes scan-fade{ 0%,70%{opacity:1;} 100%{opacity:0;} }
+#scan-overlay{
+  position:fixed;left:0;top:0;right:0;bottom:0;
+  pointer-events:none;z-index:9999;display:none;
+}
+#scan-line{
+  position:absolute;
+  opacity:0!important;
+  background:none!important;
+  box-shadow:none!important;
+  animation:scan-sweep 5s linear forwards;
+}
+#scan-line::before,
+#scan-line::after{ display:none!important; }
+#scan-done{
+  position:fixed;top:70px;left:50%;transform:translateX(-50%);
+  background:rgba(14,21,32,0.92);border:1px solid rgba(41,182,246,0.6);
+  color:#29b6f6;font-family:var(--font-main);font-size:12px;font-weight:700;
+  padding:5px 18px;border-radius:20px;letter-spacing:.5px;
+  pointer-events:none;z-index:9998;display:none;
+  animation:scan-fade 1.8s ease-out forwards;
+}
+
+/* ── Prevent map edge from clipping station labels (MSG badge etc.) ── */
+.leaflet-marker-pane,
+.leaflet-shadow-pane,
+.leaflet-overlay-pane { overflow:visible !important; }
+#map { overflow:hidden; }
+
+/* ── Dark mode tile text boost ── */
+body:not(.light-theme) .leaflet-tile-pane{
+  filter:brightness(1.25) contrast(0.95);
+}
+
+/* ── Heartbeat pulse animations (used by "you" station red pulse marker) ── */
+@keyframes hb-ping{
+  0%   {transform:translate(-50%,-50%) scale(0.5); opacity:0;}
+  15%  {opacity:0.55;}
+  80%  {transform:translate(-50%,-50%) scale(3.5); opacity:0.1;}
+  100% {transform:translate(-50%,-50%) scale(4);   opacity:0;}
+}
+@keyframes hb-ping2{
+  0%   {transform:translate(-50%,-50%) scale(0.5); opacity:0;}
+  15%  {opacity:0.4;}
+  80%  {transform:translate(-50%,-50%) scale(3.5); opacity:0.05;}
+  100% {transform:translate(-50%,-50%) scale(4);   opacity:0;}
+}
+.hb-ring{
+  position:absolute;
+  top:50%;left:50%;
+  width:100%;height:100%;
+  transform:translate(-50%,-50%) scale(0.5);
+  border-radius:50%;
+  border:2px solid currentColor;
+  animation:hb-ping 2.4s ease-out infinite;
+  opacity:0;
+}
+.hb-ring2{
+  position:absolute;
+  top:50%;left:50%;
+  width:100%;height:100%;
+  transform:translate(-50%,-50%) scale(0.5);
+  border-radius:50%;
+  border:1.5px solid currentColor;
+  animation:hb-ping2 2.4s ease-out 1.2s infinite;
+  opacity:0;
+}
+
+/* ── Legend HB entry ── */
+.l-hb{
+  display:inline-block;width:10px;height:10px;
+  border-radius:50%;background:gold;flex-shrink:0;
+  box-shadow:0 0 6px gold;
+}
+
+/* ── Station label tooltips ── */
+.station-label{
+  background:none!important;
+  border:none!important;
+  padding:0!important;
+  box-shadow:none!important;
+  white-space:nowrap!important;
+  pointer-events:none;
+  font-family:var(--font-main)!important;
+  font-size:13px!important;
+  font-weight:500!important;
+  letter-spacing:0!important;
+  line-height:1.4!important;
+}
+.label-box{
+  display:inline-block;
+  font-size:9px;   /* base floor; updateLabelSize() overrides per-zoom with !important */
+  background:rgba(5,8,14,0.96);
+  border:1.5px solid rgba(255,255,255,0.38);
+  border-radius:6px;
+  padding:4px 10px;
+  box-shadow:0 3px 14px rgba(0,0,0,0.88);
+  white-space:nowrap;
+  cursor:pointer;
+  pointer-events:auto;
+}
+/* Keep the map's grab cursor steady while panning — labels release the pointer mid-drag
+   (clicks still work when not dragging). Fixes cursor flicker over labels. */
+.leaflet-dragging .label-box{ pointer-events:none !important; }
+.notif-slots{
+  display:flex;
+  gap:3px;
+  justify-content:center;
+  margin-bottom:3px;
+}
+.notif-slot{
+  width:18px;
+  height:18px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:10px;
+  font-weight:700;
+  font-family:var(--font-main);
+  flex-shrink:0;
+}
+body.light-theme .label-box{
+  background:rgba(10,18,38,0.94)!important;
+  border:1.5px solid rgba(255,255,255,0.45)!important;
+  box-shadow:0 3px 14px rgba(0,0,0,0.65)!important;
+}
+.station-label::before{display:none!important;}
+.hide-labels .station-label{display:none!important;}
+
+/* ── Watched callsign LABEL glow ── */
+@keyframes watched-label-glow{
+  0%,100%{
+    border-color:rgba(255,215,0,0.5)!important;
+    box-shadow:0 3px 14px rgba(0,0,0,0.88),0 0 4px rgba(255,215,0,0.3)!important;
+  }
+  50%{
+    border-color:rgba(255,215,0,0.9)!important;
+    box-shadow:0 3px 14px rgba(0,0,0,0.88),0 0 8px rgba(255,215,0,0.6)!important;
+  }
+}
+.station-label-watched .label-box{
+  animation:watched-label-glow 2.4s ease-in-out infinite!important;
+}
+/* ── New-arrival label pulse (30s white border blink) ── */
+@keyframes new-arrival-pulse{
+  0%,100%{
+    outline:3px solid rgba(255,255,255,0.95);
+    outline-offset:2px;
+    filter:drop-shadow(0 0 7px rgba(255,255,255,0.9))
+           drop-shadow(0 0 3px rgba(255,255,255,0.9));
+  }
+  50%{
+    outline:3px solid rgba(255,255,255,0.08);
+    outline-offset:2px;
+    filter:none;
+  }
+}
+.station-label-new .label-box{
+  animation:new-arrival-pulse 1.8s ease-in-out infinite;
+}
+/* ── Expiring-label warning (blue glow while scan line sweeps) ── */
+@keyframes expiring-label-pulse{
+  0%,100%{
+    border-color:rgba(41,182,246,0.95)!important;
+    border-width:3px!important;
+    box-shadow:0 3px 14px rgba(0,0,0,0.88),
+               0 0 14px rgba(41,182,246,0.75),
+               0 0 5px  rgba(41,182,246,0.95)!important;
+    background:rgba(41,182,246,0.07)!important;
+  }
+  50%{
+    border-color:rgba(41,182,246,0.25)!important;
+    border-width:3px!important;
+    box-shadow:0 3px 14px rgba(0,0,0,0.88)!important;
+    background:rgba(5,8,14,0.96)!important;
+  }
+}
+.station-label-expiring .label-box{
+  animation:expiring-label-pulse 0.65s ease-in-out infinite!important;
+  border-width:3px!important;
+}
+.station-label-group .label-box{
+  border-width:1.5px!important;border-style:solid!important;
+}
+/* group-color rules are injected at runtime by app.js into #js8map-group-css (per-render dynamic — see JS8MAP_BOOT.group_css) */
+
+/* ── Popup ── */.leaflet-popup-content-wrapper{
+  background:var(--popup-bg)!important;
+  border:1.5px solid var(--popup-border)!important;
+  border-radius:12px!important;
+  box-shadow:0 10px 40px rgba(0,0,0,.7)!important;
+  font-family:var(--font-main)!important;
+  min-width:320px!important;
+  padding:0!important;
+}
+.leaflet-popup-content{margin:0!important;}
+.leaflet-popup-tip{background:var(--popup-bg)!important;}
+.leaflet-popup-close-button{
+  color:var(--text)!important;font-size:22px!important;
+  top:10px!important;right:12px!important;
+  font-weight:400!important;opacity:0.7;
+}
+.p-inner{padding:14px 16px 12px;}
+.p-call{
+  font-family:var(--font-main);
+  font-size:22px;font-weight:700;margin-bottom:6px;
+  letter-spacing:1px;color:var(--text);
+}
+.p-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:11px;font-weight:800;
+  text-transform:uppercase;letter-spacing:.8px;
+  padding:4px 10px;border-radius:20px;margin-bottom:10px;
+}
+.p-fcc-name{
+  font-size:15px;font-weight:700;color:var(--text);
+  margin-bottom:3px;letter-spacing:.2px;
+}
+.p-fcc-loc{
+  font-size:14px;font-weight:600;color:var(--muted);margin-bottom:10px;
+}
+.p-divider{height:1px;background:var(--popup-border);margin:8px 0;}
+.p-table{width:100%;border-collapse:collapse;font-size:13px;}
+.p-table tr:hover td{background:rgba(255,255,255,0.05);}
+.p-table td{padding:5px 2px;}
+.p-table td:first-child{
+  color:var(--muted);padding-right:14px;
+  font-size:11px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.7px;
+  white-space:nowrap;
+}
+.p-table td:last-child{
+  font-family:var(--font-main);
+  font-size:13px;font-weight:600;text-align:right;color:var(--text);
+  font-variant-numeric:slashed-zero;
+}
+.p-section-hdr{
+  font-size:10px;font-weight:800;text-transform:uppercase;
+  letter-spacing:.8px;color:var(--muted);margin-bottom:5px;
+}
+.p-sub-table{width:100%;border-collapse:collapse;}
+.p-sub-table td{padding:3px 2px;font-size:12px;}
+.p-sub-table td:first-child{
+  font-family:var(--font-main);font-weight:600;
+  color:var(--text);padding-right:8px;
+}
+.p-sub-table td:last-child{
+  font-size:10px;color:var(--muted);text-align:right;
+}
+/* ── Relay chain: banner via buttons, GO button, target marker ──── */
+.chain-via-btn{
+  background:rgba(255,255,255,0.05);
+  border:1.5px solid rgba(255,255,255,0.2);
+  border-radius:14px;
+  color:#cccccc;
+  font-family:var(--font-main);
+  font-size:12px;font-weight:700;
+  padding:3px 10px;cursor:pointer;
+  transition:background .15s,border-color .15s,opacity .15s;
+  white-space:nowrap;
+}
+.chain-via-btn:hover{
+  background:rgba(255,255,255,0.12);
+}
+.chain-via-btn.chain-via-selected{
+  animation:chain-via-pulse 1.3s ease-in-out infinite;
+}
+.chain-via-btn.chain-via-locked{
+  opacity:0.3;cursor:default;
+}
+@keyframes chain-via-pulse{
+  0%,100%{box-shadow:0 0 3px var(--via-glow,#e040fb);}
+  50%{box-shadow:0 0 13px var(--via-glow,#e040fb),0 0 4px var(--via-glow,#e040fb);}
+}
+.chain-via-snr{font-size:10px;opacity:0.75;margin-left:3px;}
+.chain-more{opacity:0.55;font-size:11px;margin:0 4px;}
+.chain-go-btn{
+  background:#d4920a;
+  border:none;border-radius:14px;
+  color:#000;
+  font-family:var(--font-main);
+  font-size:13px;font-weight:800;
+  padding:4px 16px;cursor:pointer;margin-left:10px;
+  transition:background .15s;
+  letter-spacing:.3px;
+}
+.chain-go-btn:hover{background:#f5aa10;}
+.chain-go-btn.chain-go-active{
+  background:#26a869;color:#fff;cursor:default;
+}
+.chain-exit-btn{
+  border-radius:14px;
+  font-family:var(--font-main);
+  font-size:12px;font-weight:700;
+  padding:3px 11px;cursor:pointer;
+  transition:background .15s;
+  white-space:nowrap;margin-left:4px;
+}
+.chain-paths-btn{
+  background:rgba(255,255,255,0.07);
+  border:1px solid rgba(255,255,255,0.25);
+  color:rgba(255,255,255,0.7);
+}
+.chain-paths-btn:hover{background:rgba(255,255,255,0.15);color:#fff;}
+.chain-done-btn{
+  background:rgba(224,64,64,0.15);
+  border:1px solid rgba(224,64,64,0.5);
+  color:#e04040;
+}
+.chain-done-btn:hover{background:rgba(224,64,64,0.3);color:#ff6060;}
+/* Target station diamond marker */
+.chain-target-dot{
+  width:18px;height:18px;
+  background:#e040fb;
+  border:2px solid #fff;
+  border-radius:3px;
+  transform:rotate(45deg);
+  box-shadow:0 0 8px rgba(224,64,251,0.7);
+}
+.chain-target-label{
+  display:flex;flex-direction:column;align-items:center;
+  pointer-events:none;
+}
+.chain-target-label .chain-dot-wrap{margin-bottom:3px;}
+.chain-target-callsign{
+  font-family:var(--font-main);
+  font-size:12px;font-weight:800;
+  color:#fff;
+  background:rgba(224,64,251,0.85);
+  border:1.5px solid #e040fb;
+  border-radius:4px;padding:1px 6px;
+  white-space:nowrap;
+  text-shadow:0 1px 3px rgba(0,0,0,0.8);
+}
+.chain-target-sub{
+  font-family:var(--font-main);
+  font-size:10px;font-weight:600;
+  color:rgba(255,255,255,0.7);margin-top:1px;
+}
+/* ── Relay Phase 2: chain hop animations ── */
+@keyframes relay-passed-off {
+  0%, 100% { opacity: 0.32; }
+  50%       { opacity: 0.78; }
+}
+/* ── Relay lag banner (top strip) ── */
+#relay-lag-banner{
+  position:fixed;
+  top:108px;
+  left:50%;
+  transform:translateX(-50%);
+  background:rgba(10,20,40,0.95);
+  border:1.5px solid rgba(41,182,246,0.75);
+  border-radius:8px;
+  box-shadow:0 0 16px rgba(41,182,246,0.28);
+  color:#d0dce8;
+  font-family:var(--font-main);
+  font-size:14px;font-weight:700;
+  padding:7px 20px;
+  white-space:nowrap;
+  z-index:9997;
+  pointer-events:none;
+  display:none;
+}
+@keyframes relay-lag-pulse{
+  0%,100%{ opacity:0.35; }
+  50%     { opacity:1.0;  }
+}
+#relay-lag-banner.pulsing{
+  animation:relay-lag-pulse 1s ease-in-out 5;
+}
+#relay-lag-banner.solid{
+  opacity:1.0;
+}
+/* ── Relay breakdown popup ── */
+.relay-warn-popup .leaflet-popup-content-wrapper{
+  background:rgba(10,15,25,0.93);
+  border:1.5px solid rgba(255,152,0,0.85);
+  border-radius:8px;
+  box-shadow:0 0 16px rgba(255,152,0,0.35);
+  color:#d0dce8;
+}
+.relay-warn-popup .leaflet-popup-tip{
+  background:rgba(10,15,25,0.93);
+}
+.relay-warn-popup .leaflet-popup-content{
+  margin:7px 14px;
+  font-family:var(--font-main);
+  font-size:12px;font-weight:700;
+  white-space:nowrap;
+}
+/* ── C.18: Relay outcome sticky bar ── */
+#relay-outcome-bar{
+  position:fixed; bottom:22px; right:16px; z-index:1300;
+  display:flex; align-items:center; gap:10px;
+  padding:8px 14px; border-radius:10px;
+  max-width:360px;
+  font-family:var(--font-main); font-size:13px; font-weight:700;
+  letter-spacing:0.2px;
+  box-shadow:0 4px 18px rgba(0,0,0,0.45);
+  transition:opacity 0.3s;
+}
+#relay-outcome-bar.outcome-complete{
+  background:rgba(0,180,90,0.95);
+  border:1px solid rgba(0,230,118,0.5);
+  color:#fff;
+}
+#relay-outcome-bar.outcome-failed{
+  background:rgba(200,100,0,0.95);
+  border:1px solid rgba(255,152,0,0.6);
+  color:#fff;
+}
+#relay-outcome-bar .ob-msg{ flex:1; white-space:nowrap; }
+#relay-outcome-bar .ob-actions{ display:flex; gap:6px; align-items:center; }
+#relay-outcome-bar .ob-btn{
+  padding:3px 9px; border-radius:5px; border:1px solid rgba(255,255,255,0.4);
+  background:rgba(255,255,255,0.18); color:#fff;
+  font-family:var(--font-main); font-size:12px; font-weight:700;
+  cursor:pointer; white-space:nowrap;
+}
+#relay-outcome-bar .ob-btn:hover{ background:rgba(255,255,255,0.32); }
+#relay-outcome-bar .ob-close{
+  background:none; border:none; color:rgba(255,255,255,0.75);
+  font-size:16px; cursor:pointer; padding:0 2px; line-height:1;
+}
+#relay-outcome-bar .ob-close:hover{ color:#fff; }
+#switch-path-panel{
+  position:absolute; top:54px; right:8px; z-index:1200;
+  background:rgba(10,15,25,0.95);
+  border:1.5px solid rgba(255,152,0,0.8);
+  border-radius:10px;
+  box-shadow:0 0 20px rgba(255,152,0,0.3);
+  padding:12px 16px;
+  min-width:220px; max-width:280px;
+  font-family:var(--font-main);
+  color:#d0dce8;
+}
+#switch-path-panel h3{
+  margin:0 0 6px 0; font-size:13px; font-weight:700;
+  color:#ff9800;
+}
+#switch-path-panel .sp-age{
+  font-size:11px; color:rgba(208,220,232,0.55); margin-bottom:8px;
+}
+#switch-path-panel .sp-stale{
+  font-size:11px; color:#ff9800; margin-bottom:8px; font-weight:700;
+}
+#switch-path-panel .sp-row{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:5px 8px; margin:3px 0;
+  border-radius:6px; cursor:pointer;
+  border:1px solid rgba(255,255,255,0.08);
+  transition:background 0.15s;
+}
+#switch-path-panel .sp-row:hover{
+  background:rgba(255,152,0,0.18);
+}
+#switch-path-panel .sp-row.sp-failed{
+  opacity:0.38; cursor:default; text-decoration:line-through;
+  pointer-events:none;
+}
+#switch-path-panel .sp-call{ font-weight:700; font-size:13px; }
+#switch-path-panel .sp-snr{
+  font-size:11px; color:rgba(208,220,232,0.6);
+}
+#switch-path-panel .sp-btns{
+  display:flex; gap:8px; margin-top:10px;
+}
+#switch-path-panel .sp-btn{
+  flex:1; padding:5px 0; border-radius:6px; border:none;
+  font-family:var(--font-main); font-size:12px;
+  font-weight:700; cursor:pointer;
+}
+#switch-path-panel .sp-btn-abandon{
+  background:rgba(255,255,255,0.08); color:#d0dce8;
+}
+#switch-path-panel .sp-btn-abandon:hover{ background:rgba(255,255,255,0.15); }
+
+/* Compose/relay popup close (×) — top-right corner; brighten on hover */
+#compose-close:hover{ color:#e8eaf0; background:rgba(255,255,255,0.08); }
+
+/* ══════════════════════════════════════════════════════════════════════
+   PLACE NAMES — country / state / city labels from js8map_places.json.
+
+   These replace what a tile backdrop used to provide, so the map still tells
+   you WHERE you are with no internet. Orientation only: no counties, no roads.
+
+   NOTE ON THE SHADOW. The first cut used a six-way text-shadow to outline
+   every label. Over tiles that reads as a clean halo; with no tiles behind it
+   the outline drew against the near-black page and turned every dark-mode
+   label into a solid black slab -- MASSACHUSETTS and DISTRICT OF C. were
+   unreadable. It is now a single soft shadow that lifts the text off the land
+   fill without boxing it in. Labels are also quieter overall: the borders
+   carry the map and the names sit back.
+   ══════════════════════════════════════════════════════════════════════ */
+.pl{
+  position:absolute;
+  pointer-events:none;          /* never intercept a click meant for a station */
+  user-select:none;
+}
+.pl .pl-txt{
+  position:absolute;
+  white-space:nowrap;
+  font-family:var(--font-main);
+  line-height:1;
+  text-shadow:0 1px 2px rgba(0,0,0,0.55);
+}
+
+/* Country — largest, spaced, centred on the country */
+.pl-country .pl-txt{
+  transform:translate(-50%,-50%);
+  font-size:11px; font-weight:700;
+  letter-spacing:2.4px; text-transform:uppercase;
+  color:rgba(180,205,232,0.62);
+}
+/* State / province — quieter than the country it sits inside */
+.pl-state .pl-txt{
+  transform:translate(-50%,-50%);
+  font-size:10px; font-weight:600;
+  letter-spacing:1.3px; text-transform:uppercase;
+  color:rgba(165,190,218,0.52);
+}
+/* City — a small tick at the exact point, name set beside it */
+.pl-city .pl-txt{
+  transform:translate(7px,-50%);
+  font-size:10px; font-weight:500;
+  letter-spacing:.2px;
+  color:rgba(195,215,235,0.68);
+}
+.pl-city .pl-dot{
+  position:absolute;
+  transform:translate(-50%,-50%);
+  width:3px; height:3px; border-radius:50%;
+  background:rgba(195,215,235,0.6);
+}
+
+/* Light theme — no dark shadow at all, or it dirties the pale land fill */
+body.light-theme .pl .pl-txt{ text-shadow:0 1px 2px rgba(255,255,255,0.85); }
+body.light-theme .pl-country .pl-txt{ color:rgba(30,48,78,0.78); }
+body.light-theme .pl-state   .pl-txt{ color:rgba(45,65,95,0.68); }
+body.light-theme .pl-city    .pl-txt{ color:rgba(25,40,65,0.85); }
+body.light-theme .pl-city    .pl-dot{ background:rgba(25,40,65,0.75); }
+
+/* ── Ocean ────────────────────────────────────────────────────────────────
+   The map container's own background IS the ocean now that no tiles are
+   drawn under the land. Leaflet defaults it to a light grey, which is why
+   the dark map came out with a near-white Atlantic: nothing was setting it.
+   Lakes are filled to match in app.js.  */
+.leaflet-container{ background:#1b2530; }
+body.light-theme .leaflet-container{ background:#cfe1ee; }

@@ -1,0 +1,595 @@
+JS8Map — Version History
+==================================================
+
+NOTE ON VERSION NUMBERS -- this changelog changes schemes at the 1.6.0 line:
+  - Entries BELOW (v1.80 .. v1.83) are JS8Map's own build lineage, pre-unification.
+  - From #35 (2026-07-15) onward this changelog tracks the PRODUCT version:
+    _APP_VERSION_STR in JS8Map.py = "1.6.0" -- the same number JS8FastChat reports.
+    Both exes display and log "JS8MapChat 1.6.0".
+  - The v1.83 Linux/cross-platform work is INSIDE 1.6.0 (rolled up, not
+    superseded) -- this single JS8Map.py carries both.
+  - Companion changelog: JS8FastChat Ver 1.5\CHANGELOG.txt. See the architecture
+    doc for how the two apps fit together.
+  Scheme change is deliberate. STATUS: unification recorded, PROVEN (the exe
+  logs version : 1.6.0).
+
+─────────────────────────────────────────────────────────────────────
+Current version: 1.6.0   (2026-07-15)   "shared-resolver"
+  #35 is an internal refactor, not a version bump -- APP_VERSION stays "1.6.0"
+  and the shared_resolve.log line still reads  version : 1.6.0  frozen=True.
+
+  *** MILESTONE (#35 CLOSED): JS8Map's shared-dir resolver and JS8FastChat's are
+      now ONE algorithm. Both apps proven frozen, launched from their DESKTOP
+      SHORTCUTS, resolving the SAME mailbox character-for-character. ***
+
+  CHANGE (#35) JS8Map's shared-folder resolver and FastChat's were two divergent
+    copies of the "same" algorithm -- reversed env-var precedence, different
+    walk-up anchor counts (JS8Map 4, FastChat 2), a legacy pointer-file step only
+    JS8Map had (js8map_writer_path.txt), and different last-resort return types.
+    Called "identical" for weeks; they were not (architecture doc, H6). Two copies
+    of a contract edited by two separate programs is the shape of nearly every bug
+    in this project.
+
+    THE MERGE: the search ALGORITHM now lives in ONE module, shared_resolver.py,
+    placed as TWO byte-identical twins -- one beside JS8Map.py, one in
+    js8fastchat\. A build-time hash-gate (check_twins.bat, called by both build
+    scripts) REFUSES TO BUILD if the two copies differ, so they cannot drift
+    unnoticed. JS8Map keeps only a THIN ADAPTER (JS8Map.py:205-237) that hands the
+    resolver its own four anchors (_EXE_DIR, _APP_DIR, _DATA_DIR, cwd) and
+    preserves JS8Map's contract EXACTLY: _fc_shared_dir_impl() still returns
+    (path_str, rule), path '' on total failure, so the public _fc_shared_dir()
+    wrapper, its #42 logging, and all 7 call sites (which do `... or _DATA_DIR` /
+    `if not shared`) are UNCHANGED.
+
+  IMPORT NOTE -- JS8Map was NOT bitten by the frozen-import bug that hit FastChat
+    this session. JS8Map imports the twin DOTLESS (JS8Map.py:217,
+    `import shared_resolver`) and that is CORRECT: JS8Map is a FLAT FOLDER, not a
+    package, so the twin sits on sys.path. (FastChat's copy lives inside the
+    js8fastchat package and needed `from .shared_resolver ...`; that one-dot fix
+    is FastChat's, commit c9f0322.) DO NOT ADD THE DOT HERE -- it re-breaks
+    JS8Map. Proven: JS8Map's exe launched clean from its shortcut and logged the
+    right SHARED DIR, twice, this session.
+
+  VERIFIED (2026-07-15) -- do not re-test:
+    - JS8Map.exe rebuilt 12:22 local on the merged resolver; launched FROZEN from
+      its desktop shortcut, map generated first (a resolver test with no map has
+      no server and no data -- invalid).
+    - Both apps FROZEN from DESKTOP SHORTCUTS, callsign clicked -> FastChat popup
+      -> grid query TRANSMITTED. Both shared_resolve.log read side by side,
+      identical SHARED DIR:
+          [JS8Map]   16:25:20 UTC  SHARED DIR = ...\JS8MapChat Shared Ver 1.5  frozen=True
+          [FastChat] 16:41:57 UTC  SHARED DIR = ...\JS8MapChat Shared Ver 1.5  frozen=True
+
+    ** SCOPE OF THE PROOF: this proves agreement in ONE layout -- sibling folder,
+    this machine, the walk-up rule firing for both. It does NOT prove the
+    resolvers agree on a stranger's machine (Program Files, or one env var set),
+    where a DIFFERENT rule fires. "Proven in the realistic layout," not
+    "proven everywhere."
+
+  GIT: the shared merge is commit c9f0322, tagged v1.6.0-35-shared-resolver-proven
+    (the repo-wide tag covering both apps; JS8Map's adapter edit is part of it).
+    ROLLBACK: git checkout v1.6.0-both-frozen-proven (pre-#35 entirely) or
+    v1.6.0-35-shared-resolver-proven (this proven state).
+
+  KNOWN COSMETIC (not fixed, noted): Build_JS8Map.bat (renamed from Build_JS8Map_v1.83.bat) prints
+    Invalid switch - "i".  where it tries to echo the exe timestamp. The build
+    itself is fine; read freshness off disk instead:  dir "...\dist\JS8Map.exe".
+    Its own small ticket (shared with FastChat's build script).
+
+─────────────────────────────────────────────────────────────────────
+1.6.0   "version-free-folder"   (#38)
+  A 1.6.0 companion to the "shared-resolver" (#35) milestone above; shipped
+  as part of the same unification. Code present in the shipped tree,
+  HEAD-verified this session at the lines cited. Documentation only -- no
+  code change here.
+
+  CHANGE (#38) The shared-mailbox folder name is now VERSION-FREE. Canonical
+    name 'JS8MapChat Shared'; the legacy 'JS8MapChat Shared Ver 1.5' is still
+    ACCEPTED, in priority order (JS8Map.py:191-192, _FC_SHARED_DIR_NAMES).
+    An existing install keeps working with no rename by the operator.
+
+  WHY In v1.5 the two apps agreed on the mailbox by string-matching a folder
+    name with the version baked in ('...Ver 1.5'). That made a version bump a
+    BREAKING CHANGE to the contract between two separately built programs:
+    rename the folder, bump one app's constant but not the other's, and the
+    handoff dies -- silently, in a --noconsole build. Taking the version out
+    of the name means the next bump never touches the contract.
+    (JS8Map.py:174, "v1.6: THE VERSION IS OUT OF THE FOLDER NAME.")
+
+  DEAD CONSTANT (deliberate) _FC_SHARED_DIR_NAME = 'JS8MapChat Shared'
+    (JS8Map.py:184) is read by NOTHING and creates the folder from NOTHING.
+    Kept only so no stale import can break. When the sibling shared folder is
+    absent the per-user mailbox is used; JS8Map never creates a sibling.
+
+  MIRRORS FastChat's parallel folder-name contract -- its accepted-names list
+    must stay identical (verify_shared_dir.py asserts it; the twin hash-gate,
+    check_twins.bat, enforces the shared_resolver.py copy).
+
+─────────────────────────────────────────────────────────────────────
+1.6.0   (audit closed 2026-07-16)   "datadir-fix"   (#40)
+  Partial _DATA_DIR->shared moves shipped inside 1.6.0; this session AUDITED
+  the remainder and confirmed BOTH sides. No code change resulted -- the
+  finding was that the write side was already correct. NOT a "reorg done"
+  claim; this is an audit closure. (Companion to FastChat's own 1.6.0
+  "datadir-fix" block.)
+
+  CHANGE (#40) Three cross-app handoff files moved from JS8Map's per-user
+    _DATA_DIR to the SHARED mailbox, resolved shared-first (tagged
+    "v1.6: was _DATA_DIR"):
+    - js8fastchat_intent.json     (JS8Map.py:4104)
+    - js8map_raise_fastchat.json  (JS8Map.py:4145)
+    - js8map_server.json          (JS8Map.py:4291)
+    each os.path.join(_fc_shared_dir() or _DATA_DIR, ...). WHY: in SCRIPT
+    mode _DATA_DIR is JS8Map's source folder, which FastChat's poller does
+    not search, so the handoff only ever worked from the frozen .exe. The
+    shared folder works in both modes and in the installed build.
+
+  AUDIT (2026-07-16, HEAD-verified) Walked all 33 _DATA_DIR uses in
+    JS8Map.py. RESULT: every file that crosses the app boundary already
+    resolves shared-first (the three above, plus the outgoing-TX publish and
+    the TX-pending lease, and the read of FastChat's js8fastchat_alive.json).
+    Every REMAINING _DATA_DIR use is genuinely JS8Map-PRIVATE and correctly
+    stays per-user: js8_spots.db, js8_relay.db, js8_groups.json,
+    ham_map_config.json, the ham_map.html render output, tx_shadow.log,
+    map_window_profile, the app icon, and the debug logs. No cross-app file
+    is stranded on the per-user folder. The "#40 ZERO ROWS" failure does NOT
+    occur in the shipped build.
+
+  FALLBACK IS SAFE, NOT A BUG The 'or _DATA_DIR' fallback fires only if
+    _fc_shared_dir() returns '' (total resolver failure). Even then, in the
+    frozen build FastChat still finds the file: intent_poller._search_dirs()
+    -> _newest_existing() searches the resolved shared dir, the per-user
+    mailbox %LOCALAPPDATA%\JS8MapChat\Shared (ALWAYS), and legacy
+    %LOCALAPPDATA%\JS8Map (a frozen JS8Map's _DATA_DIR), and takes the
+    NEWEST copy (FastChat's #34 stale-shadow fix). Confirmed by reading
+    FastChat's poller this session.
+
+  KNOWN LIMITATION (dev-only, never shipped) The single uncovered corner is
+    SCRIPT mode AND resolver-empty at once: there _DATA_DIR is JS8Map's
+    source folder, which the poller does not search, so a fallback write
+    would be missed. This cannot happen in the frozen / installed product.
+    Not fixed; documented.
+
+  SCOPE (mirrors #35's scope note) #40 is proven for the REALISTIC layouts
+    on both the write (JS8Map) and read (FastChat) sides -- "proven in the
+    realistic layout," not "proven on every possible machine."
+
+  GIT No code change from the audit; the moved-file code is part of the
+    shipped 1.6.0 tree (HEAD-verified at the lines above). This changelog
+    entry is the deliverable.
+
+─────────────────────────────────────────────────────────────────────
+Previous version: v1.83
+  Version bump for backup separation. Changelog moved to CHANGELOG.txt
+  (no longer embedded in JS8Map.py — saves ~5,500 tokens per session).
+  FEATURE Cross-platform support for Linux Mint / Cinnamon:
+    - Platform-detected font families: Noto Sans + Noto Sans Mono (Linux),
+      Helvetica Neue + Menlo (macOS), Segoe UI + Consolas (Windows).
+      All 60 inline font references route through _FONT_SANS / _FONT_MONO_NAME.
+    - FCC_DB_CANDIDATES expanded with Linux paths: ~/FCC_DB, ~/hamdb,
+      ~/.local/share/fcc_db, ~/fcc_db, /opt/fcc_db.
+    - _fcc_folder() returns ~/FCC_DB on Linux/macOS, C:\FCC_DB on Windows.
+    - _browse_fcc_db start directory uses Linux-aware candidate list.
+    - _browse_ini start directory: Linux opens ~/.config/JS8Call/ or ~/.config/;
+      Windows TX-Halt-aware logic unchanged.
+    - Global hotkey (Ctrl+Shift+J) already guarded with sys.platform check.
+    - iconbitmap already wrapped in try/except.
+    - Browser launch already falls back to webbrowser.open() on non-Windows.
+  NEW FILE LaunchJS8Map.sh — Linux launcher (checks for python3-tk, runs in bg).
+  NEW FILE JS8Map.desktop — Linux Mint menu integration.
+
+Previous release: v1.82_Windows (locked Windows build)
+
+v1.82_Windows (locked Windows release):
+  CHANGE Removed Shadow TX mode from Settings radio buttons. Shadow still works
+    internally (tx_query path unchanged) but is no longer selectable in the UI.
+    Manual and Live are the only visible options.
+  CHANGE Removed the "↻ Change" button and "(Shadow → Manual → Live)" label
+    from the TX row. Mode is changed via the radio buttons in Settings.
+  CHANGE Group pill recolored from green (#66cc66) to purple (#E996F5):
+    🎯 icon, pill border, divider, Go fg, armed badge bg/fg all updated.
+    Groups button fg set to white on dark purple bg (#3a0a3a).
+    Combobox text set to white via foreground='white'.
+  CHANGE Added breathing room between group dropdown arrow and Go button
+    (divider padx 4→8, Go pack padx 0→6) to prevent accidental Go taps.
+  CHANGE API Log button removed from visible UI. Now opened via Ctrl+L hotkey
+    only (both cases bound). No conflict with map's bare-L label toggle.
+  FEATURE JS8Call.ini Browse button added to Settings (row 7, between FCC DB
+    and Startup TX). Shows path tail or "Auto-detect" in muted text. On pick:
+    saves to config, updates label, immediately re-syncs groups. Status bar
+    confirms with "✓ JS8Call.ini set · <folder>/JS8Call.ini".
+  FEATURE JS8Call.ini probe list expanded: now checks JS8Call-Improved and
+    JS8Call_Improved folder name variants (both Roaming and Local, env-var and
+    ~ expansion paths) in addition to standard JS8Call paths.
+  FEATURE Browse start directory is TX-Halt-aware: unchecked (older JS8Call) →
+    opens at AppData\Local\JS8Call\; checked (Improved) → opens at
+    AppData\Local\ for manual navigation into Improved's folder.
+  FIX Both "JS8Call.ini not found" warning messages updated from misleading
+    "Set the path in Settings" to accurate "Use Browse… beside JS8Call.ini
+    in Settings" (the Browse field now exists).
+  FIX ini_label populated on config load — shows saved path at startup just
+    like fcc_label (no stale "Auto-detect" when a path is already configured).
+
+Previous version: v1.82_K
+New in v1.82_J:
+  FIX Groups dropdown still dark in light theme after v1.82_I. Unlike the other
+    toolbar selects, #group-filter carried its own hardcoded inline dark style
+    in index.html (never used the .map-dropdown class), and dynamically-added
+    group options got an inline dark style in app.js (_ensureGroupOption). FIX:
+    the select now uses class="map-dropdown" (theme-aware), and added options
+    no longer set an inline background/color (they inherit .map-dropdown
+    option). Python's _build_group_filter_opts was already clean. Frontend-only
+    (index.html + app.js).
+  FIX Popup name now reads in natural order. FCC stores "LAST, FIRST MI"; the
+    popup showed it verbatim ("Schramm, Michael W"). Now flipped to "First MI
+    Last" ("Michael W Schramm") at the FCC-lookup step. (Kept under v1.82_J per
+    operator request — small fix, no version bump.)
+
+Current version: v1.82_I
+New in v1.82_I:
+  FIX Light-theme map toolbar dropdowns (Popup / New / Active / Groups) stayed
+    dark — a carryover from the dark theme. .map-dropdown had hardcoded colors
+    (background #1e2530, light text, white-ish border) instead of theme vars,
+    so they didn't follow light/dark like the toggle buttons (Fit All/Box/Anim)
+    do. FIX: .map-dropdown + its <option> now use var(--surface)/var(--text)/
+    var(--border) (+ a hover border in --blue), so the selects match the rest
+    of the toolbar in both themes. Frontend-only (app.css).
+    NOTE for a future pass: the top-bar .stat counters (I HEAR/MUTUAL/etc.)
+    use a faint white overlay (rgba(255,255,255,0.03/0.10)) that is nearly
+    invisible on the light background — not the reported dark carryover, but
+    worth theme-aware tokens if light-mode polish continues.
+
+Current version: v1.82_H
+New in v1.82_H:
+  FIX Startup TX radio showed "Manual" while the Live confirm dialog was open
+    (and briefly after), making a saved-Live default look like it hadn't
+    persisted ("popup appears but Manual is checked / didn't save"). The radio
+    selector (_tx_mode_sel_var) was only updated AFTER the dialog was answered;
+    its init value is 'manual'. FIX: _apply_tx_mode now sets the selector to
+    the mode being applied BEFORE showing the confirm, so the Live radio reads
+    as selected while its own confirm is open. Declining still re-syncs the
+    radio back to Manual afterward. Purely a display fix — _TX_MODE[0], the
+    gate, persistence, and the every-launch-confirm-when-Live safety behavior
+    are unchanged. (NOTE: the Live confirm only ever fires when the SAVED
+    default is Live; Manual/Shadow and first-time users are never prompted.)
+
+Current version: v1.82_G
+New in v1.82_G:
+  CHANGE Font cleanup. FONT_MONO was ('Yu Gothic', 12, 'bold') — a Japanese
+    sans-serif that is neither monospace nor a match for the Segoe UI used
+    everywhere else, so the data/identifier fields (callsign, grid, host:port,
+    group names, watched/groups lists) looked off. Now ('Consolas', 12,
+    'bold') — real monospace, matches the browser map's monospace, and the
+    constant name is finally accurate. One stray ('Yu Gothic', 9) Text widget
+    also moved to Consolas. UI is now a clean two-font system: Segoe UI for
+    chrome, Consolas for data. (No call-site changes — all route through
+    FONT_MONO.)
+  CHANGE Simplified the LIVE-mode confirmation dialog text (kept the native
+    Windows OK/Cancel gate; Cancel still falls back to Manual). Was a long
+    paragraph ending in the now-stale "relay message (Phase 2) still stages
+    for manual send" line. Now: "System going LIVE {at startup|now} — Realtime
+    TX about to be active. Continue?"
+
+Current version: v1.82_F
+New in v1.82_F:
+  CHANGE Moved the compose-window close (×) button from the bottom button row
+    to the top-right corner (conventional placement). Applies to BOTH the
+    popup MSG window and the relay MSG window (shared openComposePopup).
+    Frontend-only (app.js + a hover rule in app.css). The bottom row is now
+    Send · HALT · Clear; the × keeps its id/handler and Esc-to-close still
+    works, and the post-send countdown ("× to close now") is unaffected.
+
+Current version: v1.82_E
+New in v1.82_E:
+  CHANGE Removed the "Fade" map-toolbar filter (operator confirmed unused;
+    the new Active filter supersedes it). Frontend-only: dropdown gone from
+    index.html; setFade/fadePct/savedFade/WINDOW_MS and the label-opacity
+    logic removed from app.js (labels now always full opacity). The unrelated
+    "scan-fade" radar-sweep animation and the shared .map-dropdown styling are
+    untouched.
+  CHANGE Enlarged the notification badges above the callsign box (heard-by /
+    hears counts). They were ~10px circles with a ~7px digit — too small to
+    read. Now scale at ~1.5x the callsign font with a 16px floor and a larger
+    digit ratio, so the counts are legible at normal zoom. One tunable spot
+    (updateLabelSize in app.js) if they want them bigger/smaller. (Open Item B
+    'badge scaling on zoom' is effectively addressed; max_px can still be
+    raised later if deep zoom-in needs even larger.)
+
+Current version: v1.82_D
+New in v1.82_D:
+  NEW Map toolbar "🕐 Active: N min" filter (frontend-only). Sits beside the
+    existing "🆕 New" filter. The New filter keys on first_seen_ts (stations
+    that FIRST appeared within N min); the Active filter keys on last_seen
+    (stations LAST heard within N min), so it lines up with JS8Call's Age
+    column. Resolves the report where a 5-min filter dropped stations JS8Call
+    still showed as <5min old — those were recently active but first seen
+    earlier, so the New (first-seen) filter hid them. Options Off/1/5/10/15/30.
+    last_seen was already emitted per station, so no Python data changes; the
+    two filters are independent (AND-combined when both are set).
+
+Current version: v1.82_C
+New in v1.82_C:
+  FIX Stations that answered YES to a group-directed QUERY CALL were not
+    tagged to that group, so their callsign boxes did not turn the group
+    color (e.g. half the @AMRRON boxes stayed un-colored after a relay query).
+    Cause: group auto-tag Path B keys on a numeric SNR in the EXTRA field, but
+    YES replies carry an empty EXTRA (the SNR is inside TEXT), so Path B skips
+    them. FIX: the audience of the QUERY CALL is now remembered at arm time
+    (_pending_relay_audience), and a YES responder is tagged to that group
+    (new GRP-Y log path) — its box shows the group color like the SNR? path.
+    @ALLCALL/@HB are skipped (a YES there proves no specific group membership),
+    and the existing 300s armed-target gate still bounds when tagging applies.
+
+Current version: v1.82_B
+New in v1.82_B:
+  FIX Relay message would not send from the compose window in LIVE mode.
+    /relay_commit pre-staged just the relay PREFIX ('VIA>TARGET ') into
+    JS8Call's outgoing box via TX.SET_TEXT. When the compose-window Send then
+    fired TX.SEND_MESSAGE with the FULL frame, JS8Call would not cleanly
+    replace-and-send over the already-staged text — the message stuck in the
+    box showing only the prefix, and only flushed/transmitted after a manual
+    Halt reset JS8Call's TX state. FIX: stop pre-staging on commit; the compose
+    window already carries the complete frame to a clean box, so the live send
+    transmits immediately. Affects relay GO (banner) and the popup 'Relay to'
+    button (both route through /relay_commit). Manual/Shadow unaffected (their
+    compose Send writes the full frame via TX.SET_TEXT, overwriting cleanly).
+    NOTE: /relay_switch_path still stages a prefix for its paste-at-radio
+    workflow; if a future build routes Switch Path through the compose window,
+    apply the same change there.
+
+Current version: v1.82_A
+New in v1.82_A:
+  NEW Auto-sync callsign groups from JS8Call. On startup JS8Map reads
+    JS8Call.ini (the TCP API does not expose the Callsign Groups field) and
+    mirrors its "Callsign Groups (comma separated)" into the relay/query
+    audience list. New groups are merged into the map color list with auto-
+    assigned colors. Path auto-detects per-platform (Windows %LOCALAPPDATA%\
+    JS8Call\JS8Call.ini, Linux ~/.config, macOS ~/Library/Preferences); a
+    blank config key 'js8call_ini_path' can override it. The .ini is parsed by
+    value shape (a line of all @-tokens), not a hard-coded key name, so a
+    version quirk in the key spelling can't break the sync. Falls back to the
+    saved list with a status note if JS8Call.ini isn't found.
+  FIX Clear/QSY did not tear down an armed relay. _clear_map() wiped the
+    relay DB but left _armed_relay_ref, _armed_relay_pos_ref, and
+    _relay_committed_ref set in memory, so a stale target could snap back
+    after a frequency change. _clear_map() now performs a full relay teardown
+    (same sequence as /relay_arm_clear): all three module-level refs zeroed,
+    all relay timers cancelled, and armed_target/armed_target_pos stripped
+    from the in-memory data.json so the browser drops the relay overlay
+    immediately on the next poll.
+
+Current version: v1.81_F  (point revision of 1.81)
+New in v1.81_F:
+  FIX 'No such file or directory: ...boot.js' on launch. The saved out_path in
+    ham_map_config.json could point at a folder from a previous version; the
+    app trusted it blindly, so boot.js/ham_map.html failed to write. Now: (1)
+    a saved out_path is ignored on load if its folder no longer exists (falls
+    back to default beside the .py), and (2) the render write itself falls back
+    to the script dir if the resolved folder is missing. A stale config can no
+    longer strand the app.
+
+Current version: v1.81_E  (point revision of 1.81)
+New in v1.81_E:
+  FIX relay comet animation didn't fire when starting a relay from the
+    callsign-popup 'Relay to <target>' button. That button opened the compose
+    window directly and skipped /relay_commit, so _relay_committed_ref stayed
+    None and the TX.FRAME handler never advanced leg1_tx. Now the popup button
+    runs the SAME commit path as GO (via _relayFromPopup → _commitChain), so
+    the state machine arms and the comet animates. TX itself was always fine.
+
+Current version: v1.81_D  (point revision of 1.81)
+New in v1.81_D:
+  FIX compose-window HALT was unusable after Send — the window auto-closed in
+    1.2s, so HALT vanished before/while the (slow) JS8 TX was still going. Now
+    after a LIVE send the window STAYS OPEN ~15s (one Normal TX cycle) with
+    HALT live and a visible countdown; Send + text lock to prevent a double-
+    send; operator can hit X to close early. Hitting HALT stops the countdown
+    so the result stays readable. (Future: close on real TX-end via TX.FRAME.)
+  Relay 'Relay to' popup button now opens the compose window (was clipboard).
+  Relay-to-callsign toolbar input hidden (relays start from map/Python flow).
+  Header version banner corrected (was stale).
+
+Current version: v1.81_C  (point revision of 1.81)
+New in v1.81_C:
+  FIX relay compose Send: the /popup_tx 'msg_send' branch rebuilt the frame as
+    '<CALL> MSG <text>', which DESTROYED relay routing (KO4BIA>N4WXI became
+    'KO4BIA MSG ...' and JS8Call couldn't route it). Now transmits the exact
+    frame the compose window built (body['frame']) verbatim, preserving
+    'VIA>TARGET <msg>'. Direct MSG unaffected; reconstruct only as fallback.
+  Compose textarea now forces UPPERCASE as you type (JS8 is caps-only) — both
+    displayed and in the actual transmitted text.
+  Main window taller (800h, clamped to screen) so the TX readout + HALT
+    settings rows no longer clip the bottom buttons.
+
+Current version: v1.81_B  (point revision of 1.81)
+New in v1.81_B:
+  Compose popup for outgoing messages (callsign-popup MSG + relay MSG, same
+  window — consistent). Type, Enter to Send (transmits mode-aware via
+  /popup_tx 'msg_send' → tx_query), HALT button, X Clear. Send auto-closes on
+  a LIVE transmit. Keeps you in JS8Map instead of switching to JS8Call.
+  HALT button → RIG.TX_HALT over the existing connection (JS8Call Improved
+  API 3.0+). Gated by a settings checkbox 'My JS8Call supports RIG.TX_HALT',
+  DEFAULT OFF (older 2.x has no API halt; button greys with a tooltip pointing
+  to JS8Call's own Halt Tx, which is always available since JS8Call is open).
+  New /halt_tx endpoint; tx_halt() sends over the existing socket directly
+  from the HTTP thread for an immediate stop. Capability flows to the browser
+  via boot + data poll so the button enables/disables live.
+
+Current version: v1.81_A  (point revision of 1.81)
+New in v1.81_A:
+  Callsign-popup buttons (SNR? / HEARING? / MSG) now route through the same
+  audited TX chokepoint as Group GO / Relay Search (previously they POSTed
+  TX.SEND_MESSAGE directly to JS8Call, bypassing TX mode + logging):
+    - SNR? / HEARING? → tx_query (mode-aware): auto-send in LIVE, fill box in
+      MANUAL, log in SHADOW. Triggers 'popup-snr' / 'popup-hearing'.
+    - MSG → tx_stage (always fills JS8Call's box with '<CALL> MSG <text>',
+      never transmits): operator reviews and presses send. Trigger 'popup-msg'.
+      Keeps the message prompt; pre-fills what you typed.
+    - New /popup_tx endpoint; sendJS8() rewritten to use it (same-origin),
+      with clipboard fallback if Python is unreachable. Status line reports
+      transmitted / filled box / shadow / invalid callsign.
+  Settings "Startup TX" radios: enlarged to size 11 (normalized with the gold
+  label) and the ACTIVE mode now shows green + bold text (not just the dot),
+  following the real armed mode (stays Manual if a Live pick is declined).
+
+v1.81  (STABLE RELEASE — locked)
+
+v1.81 consolidates the v1.80_B..v1.80_F release-candidate series into a
+stable build. Headline changes since v1.80:
+  • TX MODE (Shadow / Manual / Live) governs Group GO + Relay Search, with a
+    persisted startup default (config 'tx_mode', never auto-live), a settings
+    radio, a mid-session "↻ Change" flip, an always-visible colour readout,
+    and a confirm prompt EVERY time Live becomes active. Relay Phase-2 GO is
+    exempt and always stages.
+  • Phase-2 relay staging via tx_stage()/TX.SET_TEXT — fills JS8Call's box
+    (never transmits) + clipboard backup; operator sends the real message.
+  • TX status feedback: status lines report what actually happened
+    (transmitted LIVE / filled box MANUAL / not connected / shadow).
+  • Relay reliability: discovery rebuilds the map so vias plot live; home
+    station no longer hidden; "Refresh paths" button; return-leg watchdog
+    (timeout_return → Switch Path) for when a via never relays the reply home.
+  • Relay callsign field rewritten to an airtight placeholder model — the
+    2nd-callsign mangling bug ('EKGC1PHY') is eliminated at the root.
+  • UI: gold "Startup TX" settings label.
+
+Known open item (deferred to a future version):
+  • Clear/QSY does not yet tear down an armed relay target, so a stale target
+    can briefly reassert after a frequency change until cleared with ×.
+
+Detailed RC history follows.
+─────────────────────────────────────────────────────────────────────
+v1.80_F:
+  FIX (root cause) relay 2nd-callsign mangling ('EKGC1PHY'): replaced the
+    fragile in-StringVar placeholder with an airtight model — a <KeyPress>
+    handler clears the placeholder BEFORE the typed char lands, and a write
+    trace sanitizes every change to callsign-legal chars only. The placeholder
+    can never coexist with input, so typing a second callsign after Search (or
+    after the × clear) always yields a clean target. Arm guard also short-
+    circuits when the placeholder is active. Verified: ke2kn→KE2KN, × clear,
+    kc1phy→KC1PHY (not EKGC1PHY).
+v1.80_E:
+  TX feedback: tx_query now returns a status ('sent'/'staged'/'shadow'/'skip')
+    and the relay-arm + group-Go status lines report what ACTUALLY happened
+    ("transmitted (LIVE)" / "filled JS8Call box (MANUAL)" / "not connected"),
+    instead of always saying "copied to clipboard". Makes mode behavior and
+    connection problems self-diagnosing. Removed a stray duplicate return.
+v1.80_D:
+  FIX relay callsign field: placeholder ('e.g. KD4E') could concatenate with
+    typed input on a focus race (e.g. 'KC1E.G. KD4E'), pass the old exact-match
+    guard, and send a malformed QUERY CALL that JS8Call ignored — the cause of
+    "relay didn't fire after reopen". Now: _relay_key strips placeholder
+    fragments + keeps only callsign-legal chars; FocusOut/hide clears partial
+    placeholder; arm guard validates the target (3–10 chars, has a digit) and
+    rejects remnants so garbage never reaches tx_query.
+  UI: "Startup TX" settings label is now gold + bold to stand out.
+v1.80_C:
+  TX MODE feature — Shadow / Manual / Live, governs Group GO + Relay Search:
+    - shadow: log only (no JS8Call touch); manual: TX.SET_TEXT (fills box, no
+      RF, operator sends); live: TX.SEND_MESSAGE (real RF).
+    - Saved startup default in config ('tx_mode'); missing/corrupt → 'manual'.
+      NEVER auto-defaults to live.
+    - Settings card: "Startup TX" radio (Shadow/Manual/Live), persists.
+    - Mid-session "↻ Change" flip (Shadow→Manual→Live) without restart.
+    - Always-visible on-screen readout (🔴 SHADOW / 🟡 MANUAL / 🟢 LIVE).
+    - Going LIVE prompts a confirm EVERY time (including at startup); decline
+      falls back to manual.
+    - Relay Phase-2 GO is EXEMPT — always stages (TX.SET_TEXT) in every mode.
+v1.80_B:
+  Phase-2 relay staging: GO now stages the relay frame instead of sending it.
+    - tx_stage() chokepoint uses TX.SET_TEXT (fills JS8Call's outgoing box,
+      NEVER transmits) + clipboard copy as backup. Operator types the message
+      in JS8Call and presses send manually — human checkpoint on the one frame
+      that carries real content.
+    - tx_stage is EXEMPT from the shadow gate (TX.SET_TEXT is RF-safe by
+      design); the real transmit path (tx_query / TX.SEND_MESSAGE) stays gated.
+  Return-leg watchdog: timeout_return fires if the via gets the target's reply
+    but never relays it home (Switch Path popup, mirrors timeout_dest).
+  Relay discovery now rebuilds the map (vias plot live); home station no longer
+    hidden during relay; "Refresh paths" button added to relay banner.
+Key features delivered in C.18 series:
+  Relay animation: leg1_tx, leg2_fwd (45s single-pass), rtn_leg1, rtn_leg2
+  Early animation triggers from RX.FRAG offset detection (rtn_leg1 + rtn_leg2)
+  Offset tracking (_last_seen_offset) for destination timer accuracy
+  YES list persistence + Switch Path panel on timeout_dest
+  Destination timeout 45s (sliding window, resets on each via-offset frag)
+  Relay outcome pill (green/amber), persists after leaving relay view
+  Re-arm full state clear: relay DB, committed ref, anim ref, timers
+  fitAll auto-fires on Done exit; api_log preserved across restarts
+  R button replaced with full JS8Call snapshot refresh
+  Animation on/off toggle; Watched Calls filter; Groups moved to row 1
+  Light-map line visibility improved (weight 2.8, opacity 0.75)
+  Reset Relay (was Clear Relay); Clear button removed (redundant with Done)
+Full version history is in CHANGELOG.txt.
+
+
+==============================================================================
+2026-07-18  —  Buildout Phase 7  (1.6.0)
+==============================================================================
+
+RUNTIME PROOF — the whole 1.6.0 product, both apps (tag v1.6.0-40-runtime-proven)
+  No code change in JS8Map. Both apps rebuilt and launched FROZEN from dist\;
+  both resolver logs, same minute, frozen=True, agreed on
+  SHARED DIR = ...\JS8MapChat Shared Ver 1.5 (walk-up). Map generated first,
+  app-switch button exercised, SNR? and INFO? round-tripped live on 40m.
+  Evidence: %LOCALAPPDATA%\JS8Map\shared_resolve.log 17:46:17 UTC entry;
+  API log 17:47-17:49 UTC. WHY IT'S HERE: last runtime-proven tag before this
+  was v1.6.0-35-shared-resolver-proven; this closes the "green build is not a
+  working exe" gap for 1.6.0.
+
+shared_resolver.py — per-user mailbox path calc deduplicated (commit bc1cfaa)
+  NOT A BUG FIX. No defect existed (confirmed Phase 6, re-confirmed Phase 7 by
+  reading both files). Drift insurance only: the intent poller (FastChat side)
+  carried its own copy of the %LOCALAPPDATA%\JS8MapChat\Shared path calc; the
+  two copies computed identical paths but COULD drift under future edits.
+  OLD (this file): per_user_shared_dir() computed the path inline and called
+      os.makedirs(d, exist_ok=True) on it.
+  NEW (this file): per_user_shared_dir_path() — NEW function — computes the
+      path and NEVER creates; per_user_shared_dir() now calls it and then
+      makedirs. Writer behaviour byte-for-byte unchanged.
+  WHY: one spelling of the path, two behaviours (create vs compute-only), so a
+      future edit cannot make the reader and the writers disagree.
+  BOTH TWINS edited byte-identically (MD5 602fe05e796deef90700b6f0a4026f36);
+  #35 hash-gate printed that hash on the proving rebuild. NEVER edit one twin
+  alone.
+
+NOT A BUG — leave these alone:
+  * %LOCALAPPDATA%\JS8MapChat\Shared sitting EMPTY on the dev machine is
+    CORRECT. It is the no-sibling fallback; walk-up wins inside the dev tree
+    and the live mailbox is ...\JS8MapChat Shared Ver 1.5. An empty per-user
+    Shared is not a broken mailbox. (Arch doc §5.3.)
+  * THREE files are now named shared_resolve.log. JS8Map writes to
+    %LOCALAPPDATA%\JS8Map\ when FROZEN and beside the code when run as a
+    script — the script-mode one goes stale the moment you stop running from
+    source. Stale dates there do NOT mean JS8Map failed to log. (Arch doc §8.)
+
+PENDING (logged, not a defect):
+  * JS8Map.exe on disk (07-18 01:45 PM) predates commit bc1cfaa. Behaviour
+    expected identical; the next rebuild picks the refactor up through the
+    hash-gate. Until then that exe is pre-bc1cfaa code.
+
+==============================================================================
+2026-07-19  —  Bug Testing Phase 1  (1.6.0)
+==============================================================================
+
+JS8Map.exe REBUILT — the Phase 7 PENDING item above is now CLOSED.
+  No code change. The rebuild exists only to pick up commit bc1cfaa (the
+  resolver dedup), which landed after the previous exe was built.
+  OLD exe: 2026-07-18 01:45 PM, 13,319,544 bytes — pre-bc1cfaa code.
+  NEW exe: 2026-07-19 07:01 AM, 13,319,722 bytes — contains bc1cfaa.
+  PROVEN AT RUNTIME, not just built: launched FROZEN from dist\ via the desktop
+  shortcut, map generated first (the §4.5 prerequisite), and
+  %LOCALAPPDATA%\JS8Map\shared_resolve.log recorded at 11:03:32 UTC:
+      SHARED DIR = ...\JS8MapChat Shared Ver 1.5
+      rule    : walk-up from ...\JS8Map Ver 1.5\dist
+      version : 1.6.0  frozen=True
+  Behaviour identical to every launch since 2026-07-13 — the dedup changed
+  structure, not results, exactly as predicted. Clock check: exe stamped 07:01
+  LOCAL, log entry 11:03:32 UTC (EDT = UTC−4) = 07:03 local, two minutes after
+  the build. This is the new binary logging, not a stale entry.
+  WHY IT'S HERE: this was the last UNPROVEN item anywhere in the record.
+
+Installer rebuilt as a side effect of the build script:
+  installer_output\JS8MapChat_v1.6.0_Setup.exe was regenerated by the same run
+  (the .bat calls ISCC). ⚠ DO NOT DISTRIBUTE IT. JS8Map.iss is still UNREAD and
+  still requires admin and provisions a world-writable C:\FCC_DB. The installer
+  building successfully is NOT a security review.

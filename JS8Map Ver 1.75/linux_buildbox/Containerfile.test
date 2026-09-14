@@ -1,0 +1,11 @@
+FROM docker.io/library/ubuntu:20.04
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Etc/UTC
+# Only what a normal desktop already provides. Deliberately NOT python,
+# NOT tkinter, NOT any build tool.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libx11-6 libxext6 libxrender1 libxft2 libxss1 libxinerama1 \
+        libfontconfig1 fonts-dejavu-core \
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+RUN echo "no python here:" && (command -v python3 || echo "  correct, none")

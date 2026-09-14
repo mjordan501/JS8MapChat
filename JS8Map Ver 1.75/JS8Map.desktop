@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=JS8Map
+Comment=JS8Call live spots and offline map
+Exec="/home/kw3kw/Applications/JS8Map/dist/JS8Map"
+Icon=/home/kw3kw/Applications/JS8Map/JS8Map_icon.png
+Terminal=false
+Categories=Utility;HamRadio;
+StartupNotify=true
