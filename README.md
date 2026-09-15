@@ -4,10 +4,13 @@ JS8MapChat maps JS8Call callsigns in real time, with an optional fast chat windo
 
 **Version 1.75 — Windows and Linux**
 
+**[Download JS8MapChat 1.75](../../releases/latest)** — Windows installers and Linux packages.
+
 ## Videos
 
 - [Overview of JS8Map](https://youtu.be/p99_L9B1YA8)
 - [Overview of the JS8FastChat App](https://youtu.be/yJJw8RieM4U)
+
 
 ## Related
 
