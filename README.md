@@ -4,6 +4,15 @@ JS8MapChat maps JS8Call callsigns in real time, with an optional fast chat windo
 
 **Version 1.75 — Windows and Linux**
 
+## Videos
+
+- [Overview of JS8Map](https://youtu.be/p99_L9B1YA8)
+- [Overview of the JS8FastChat App](https://youtu.be/yJJw8RieM4U)
+
+## Related
+
+**[FCC Lookup](https://github.com/mjordan501/FCC_Lookup)** — offline callsign lookup for U.S. FCC and Canadian amateur licenses. Builds the same `ham.db` database JS8Map uses.
+
 ## What is in the suite
 
 JS8MapChat is two programs that work together. Either one runs on its own; run both and a button in each window brings the other to the front.
