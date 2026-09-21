@@ -102,9 +102,9 @@ fi
 
 # --- 5. report, and compare against the proven build ------------------------
 NEW_EXE="$SRC_COPY/dist/JS8Map"
-NEW_TGZ="$SRC_COPY/JS8Map_v1.75_linux.tar.gz"
+NEW_TGZ="$SRC_COPY/JS8Map_v1.75.1_linux.tar.gz"
 OLD_EXE="$SRC_REAL/dist/JS8Map"
-OLD_TGZ="$SRC_REAL/JS8Map_v1.75_linux.tar.gz"
+OLD_TGZ="$SRC_REAL/JS8Map_v1.75.1_linux.tar.gz"
 
 echo "=================================================="
 echo " RESULT"

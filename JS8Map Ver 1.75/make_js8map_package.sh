@@ -7,7 +7,7 @@
 #  Run this on the BUILD machine, from the project folder, AFTER a successful
 #  ./build_js8map_linux.sh
 #
-#  Output:  JS8Map_v1.75_linux.tar.gz   in the project folder
+#  Output:  JS8Map_v1.75.1_linux.tar.gz   in the project folder
 #
 #  That single .tar.gz is what goes to another Linux operator. They unpack it
 #  and run install.sh. No root, no sudo, no package manager.
@@ -15,7 +15,7 @@
 
 set -e
 
-VERSION="1.75"
+VERSION="1.75.1"
 PKGNAME="JS8Map_v${VERSION}_linux"
 
 cd "$(dirname "$0")"

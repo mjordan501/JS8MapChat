@@ -29,8 +29,8 @@
 ; before this value reached any operator machine.
 AppId={{8F3A6C21-5E4B-4D79-9A0C-B7E2D14F6835}
 AppName=JS8Map
-AppVersion=1.75
-AppVerName=JS8MapChat 1.75
+AppVersion=1.75.1
+AppVerName=JS8MapChat 1.75.1
 AppPublisher=KW3KW - Ham Made Simple
 DefaultDirName={autopf}\JS8Map
 DefaultGroupName=JS8Map
@@ -41,7 +41,7 @@ OutputDir=installer_output
 ; in it and now has its own installer (JS8FastChat.iss). The old name promised
 ; two programs and delivered one, and sent operators hunting for a FastChat
 ; that no installer had ever put on their machine.
-OutputBaseFilename=JS8Map_v1.75_Setup
+OutputBaseFilename=JS8Map_v1.75.1_Setup
 SetupIconFile=JS8Map_icon.ico
 Compression=lzma2/ultra64
 SolidCompression=yes
@@ -206,7 +206,7 @@ begin
 end;
 
 [Messages]
-WelcomeLabel1=Welcome to JS8Map 1.75 Setup
+WelcomeLabel1=Welcome to JS8Map 1.75.1 Setup
 WelcomeLabel2=JS8Map is a live map display for JS8Call.%n%nIt connects to JS8Call's TCP API, plots stations on an interactive map, and resolves callsigns using the FCC and Canadian license databases.%n%nThe first time you run JS8Map it will offer to download those databases for you. The US download takes several minutes; the Canadian one is optional and much quicker.%n%nClick Next to continue.
-FinishedHeadingLabel=JS8Map 1.75 Installation Complete
-FinishedLabel=JS8Map 1.75 has been installed successfully!%n%nBefore launching:%n%n  1. Start JS8Call and enable the TCP API (port 2442)%n  2. Launch JS8Map from your desktop shortcut%n  3. Follow the first-time setup to download the callsign databases%n%nClick Generate Map and the map opens in your browser.%n%nJS8FastChat, the operator console, has its own separate installer if you want it.%n%n73 de KW3KW
+FinishedHeadingLabel=JS8Map 1.75.1 Installation Complete
+FinishedLabel=JS8Map 1.75.1 has been installed successfully!%n%nBefore launching:%n%n  1. Start JS8Call and enable the TCP API (port 2442)%n  2. Launch JS8Map from your desktop shortcut%n  3. Follow the first-time setup to download the callsign databases%n%nClick Generate Map and the map opens in your browser.%n%nJS8FastChat, the operator console, has its own separate installer if you want it.%n%n73 de KW3KW

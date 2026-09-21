@@ -6,10 +6,10 @@ import os
 import sys
 
 # Single source of truth for the displayed name + version, mirroring
-# FastChat's constants.py pattern. Both apps show "JS8MapChat 1.75".
+# FastChat's constants.py pattern. JS8Map is 1.75.1; FastChat stays 1.75.
 # Bump these two when the version changes; all window titles read from them.
 APP_NAME = "JS8MapChat"
-APP_VERSION = "1.75"
+APP_VERSION = "1.75.1"
 APP_TITLE = f"{APP_NAME} {APP_VERSION}"
 
 

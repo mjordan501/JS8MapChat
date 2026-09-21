@@ -880,7 +880,7 @@ function _applyAdditions(data){
     if(!existing){
       // Brand-new callsign — add to map immediately
       // Line uses the antimeridian-aware endpoint so far-side DX draws the SHORT
-      // way; the marker below stays at the true position (pos).
+      // way; the marker uses the same endpoint, so the box sits where the line ends.
       const line = L.polyline([[MY_LAT,MY_LON],_shortPathEnd(s.lat,s.lon)],{
         color:col,
         weight:  (typeof currentStyle !== 'undefined' && currentStyle === 'light') ? 2.8 : 1.8,
@@ -888,7 +888,7 @@ function _applyAdditions(data){
         dashArray: s.type==='hearing_me'?'6 5':null,
         interactive: false
       }).addTo(map);
-      const marker = L.marker(pos,{
+      const marker = L.marker(_shortPathEnd(s.lat,s.lon),{
         icon:mkDot(col,18,s.via_hb,s.heard_by?s.heard_by.length:0,
                    s.approx,s.has_inbox,s.watched,
                    s.station_hears?s.station_hears.length:0)
@@ -2011,7 +2011,7 @@ STATIONS.forEach(s=>{
     interactive: false
   }).addTo(map);
 
-  const marker = L.marker(pos, {icon:mkDot(col,18,s.via_hb,s.heard_by?s.heard_by.length:0,s.approx,s.has_inbox,s.watched,s.station_hears?s.station_hears.length:0)})
+  const marker = L.marker(_shortPathEnd(s.lat,s.lon), {icon:mkDot(col,18,s.via_hb,s.heard_by?s.heard_by.length:0,s.approx,s.has_inbox,s.watched,s.station_hears?s.station_hears.length:0)})
     .addTo(map)
     .bindTooltip(mkLabel(s), {
       permanent:true, direction:'right',

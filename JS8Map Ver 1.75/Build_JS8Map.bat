@@ -126,7 +126,7 @@ echo  ============================================
 echo   BUILD COMPLETE!
 echo.
 echo   Installer ready at:
-echo   installer_output\JS8Map_v1.75_Setup.exe
+echo   installer_output\JS8Map_v1.75.1_Setup.exe
 echo.
 echo   Give this ONE file to anyone.
 echo   They just double-click and install.
