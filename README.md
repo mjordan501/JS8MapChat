@@ -2,9 +2,9 @@
 
 JS8MapChat maps JS8Call callsigns in real time, with an optional fast chat window for communicating with each selected station.
 
-**Version 1.75 — Windows and Linux**
+**JS8Map 1.75.1 and JS8FastChat 1.75 — Windows and Linux**
 
-**[Download JS8MapChat 1.75](../../releases/latest)** — Windows installers and Linux packages.
+**[Download the latest release](../../releases/latest)** — Windows installers and Linux packages.
 
 ## Videos
 
