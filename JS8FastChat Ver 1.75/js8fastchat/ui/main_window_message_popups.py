@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 
 from ..constants import TIME_FILTERS
 from ..models import ActivityRow
-from ..utils import base_call, fmt_freq
+from ..utils import base_call, fmt_freq, norm_call
 from .main_window_ui_substrate import popup_font
 
 # Views in the message window (Inbox popup). The third lists messages I have
@@ -77,7 +77,7 @@ class _MessagePopupsMixin:
         clears the flag too. 0 when caught up.
         """
         with self.soft("inbox unread count", log=False):
-            b = base_call(call)
+            b = norm_call(call)
             if not b:
                 return 0
             rows = self._inbox_rows_to_me(call)
@@ -98,7 +98,7 @@ class _MessagePopupsMixin:
         """Record that I have viewed this callsign's inbox up to its newest
         message, so the Inbox button clears. Called when the inbox popup opens."""
         with self.soft("mark inbox seen"):
-            b = base_call(call)
+            b = norm_call(call)
             if not b:
                 return
             rows = self._inbox_rows_to_me(call)
@@ -139,7 +139,7 @@ class _MessagePopupsMixin:
     def _register_inbox_button(self, call: str, btn) -> None:
         """Track a popup's Inbox button so the data-refresh pipeline can recolor
         it as mail arrives / is read. Mirrors _qso_latest_widgets."""
-        b = base_call(call)
+        b = norm_call(call)
         if not b:
             return
         d = getattr(self, "_qso_inbox_buttons", None)
@@ -203,7 +203,7 @@ class _MessagePopupsMixin:
 
     def open_history_popup(self, call: str, parent=None) -> None:
         p = self.pal()
-        call = base_call(call)
+        call = norm_call(call)
         _existing = self._history_popups.get(call)
         if _existing is not None and _existing.winfo_exists():
             _existing.deiconify(); _existing.lift(); _existing.focus_force()
@@ -262,7 +262,7 @@ class _MessagePopupsMixin:
             needle = search_var.get().upper().strip()
             txt.configure(state="normal")
             txt.delete("1.0", "end")
-            rows = [r for r in self.reader.read_activity(time_label, limit=1000) if r.base == base_call(call)]
+            rows = [r for r in self.reader.read_activity(time_label, limit=1000) if norm_call(str(r.call or "")) == norm_call(call)]
             clean_rows = [r for r in rows
                           if (not self.is_history_clutter(r)
                               or self.snr_report_value(r.text) is not None)
@@ -406,7 +406,7 @@ class _MessagePopupsMixin:
             conversation rather than an undifferentiated wall of text.
         """
         p = self.pal()
-        focus_base = base_call(focus_call)
+        focus_base = norm_call(focus_call)
         my_call = base_call(self.locator.callsign())
         top = tk.Toplevel(parent or self)
         top.title(f"Other Traffic - {focus_base}")
@@ -448,7 +448,7 @@ class _MessagePopupsMixin:
         speaker_color: dict[str, str] = {}
 
         def color_for(call: str) -> str:
-            base = base_call(call)
+            base = norm_call(call)
             if base not in speaker_color:
                 idx = len(speaker_color) % len(self._OTHER_TRAFFIC_PALETTE)
                 speaker_color[base] = self._OTHER_TRAFFIC_PALETTE[idx]
@@ -470,7 +470,7 @@ class _MessagePopupsMixin:
                 return False
             if my_call and (from_base == my_call or to_base == my_call):
                 return False
-            return focus_base in (from_base, to_base)
+            return focus_base in (norm_call(str(row.call or "")), norm_call(str(row.to_call or "")))
 
         def populate(*_args):
             time_label = time_var.get()
@@ -627,7 +627,7 @@ class _MessagePopupsMixin:
 
     def open_inbox_popup(self, call: str, view: str = "", parent=None) -> None:
         _eff_view = view if view in INBOX_VIEWS else INBOX_VIEW_DEFAULT
-        _inbox_key = (base_call(call), _eff_view)
+        _inbox_key = (norm_call(call), _eff_view)
         _existing = self._inbox_popups.get(_inbox_key)
         if _existing is not None and _existing.winfo_exists():
             _existing.deiconify(); _existing.lift(); _existing.focus_force()
@@ -734,7 +734,7 @@ class _MessagePopupsMixin:
             if reply is None:
                 return
             body = reply.get("1.0", "end-1c").strip().upper()
-            target = base_call(selected_msg.get("from") or call)
+            target = norm_call(selected_msg.get("from") or call)
             if not body: self.set_status("Type a reply before sending."); return "break"
             def after_reply_sent():
                 reply.delete("1.0", "end")

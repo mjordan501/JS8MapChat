@@ -61,6 +61,12 @@ from ..utils import (
 )
 
 
+def _station_key(call) -> str:
+    """A station's identity: the full call. W3BFO and W3BFO/P are two
+    stations that can be on air at once in different places (bug 3)."""
+    return norm_call(str(call or ""))
+
+
 # Tk reports a window on a monitor LEFT of primary with a negative offset,
 # which Windows renders as "+-1529" (a plus followed by a minus), not
 # "-1529". The original pattern rejected that form, so every popup resized
@@ -1538,7 +1544,7 @@ class MainWindow(_GroupActivityMixin, _MessagePopupsMixin, _UISubstrateMixin, _R
         self._activity_iid_to_call = {}
         self._activity_iid_to_ts = {}
         ref = datetime.now(timezone.utc).replace(tzinfo=None)
-        selected_base = base_call(self.selected_call)
+        selected_base = _station_key(self.selected_call)
         _sv = getattr(self, "activity_search_var", None)
         needle = _sv.get().upper().strip() if _sv is not None else ""
         shown = 0
@@ -1558,7 +1564,7 @@ class MainWindow(_GroupActivityMixin, _MessagePopupsMixin, _UISubstrateMixin, _R
             # real pending MSG row). No separate "clear" logic needed.
             has_msg = self._has_message_for_me(row)
             if row.watched:
-                tags = ["selected_watched_activity" if row.base == selected_base else "watched_activity"]
+                tags = ["selected_watched_activity" if _station_key(row.call) == selected_base else "watched_activity"]
                 if has_msg:
                     tags.append("message")
             else:
@@ -1573,7 +1579,7 @@ class MainWindow(_GroupActivityMixin, _MessagePopupsMixin, _UISubstrateMixin, _R
                     tags.append("watchmsg")
                 if row.lookup_unknown:
                     tags.append("unknown_call")
-                if row.base == selected_base:
+                if _station_key(row.call) == selected_base:
                     tags.append("selected_call")
             flag = self.call_activity_flags(row, ref)
             iid = f"act_{i}_{row.base}"
@@ -1604,9 +1610,10 @@ class MainWindow(_GroupActivityMixin, _MessagePopupsMixin, _UISubstrateMixin, _R
         for row in self.activity_rows:
             if not row.call or row.call.startswith("@"):
                 continue
-            existing = by_call.get(row.base)
+            key = _station_key(row.call)
+            existing = by_call.get(key)
             if not existing or row.timestamp > existing.timestamp:
-                by_call[row.base] = row
+                by_call[key] = row
         rows = sorted(by_call.values(), key=lambda r: r.timestamp, reverse=True)
         calls = [CALL_ALL]
         for i, row in enumerate(rows):
@@ -1631,7 +1638,7 @@ class MainWindow(_GroupActivityMixin, _MessagePopupsMixin, _UISubstrateMixin, _R
                     tags.append("watchmsg")
                 if row.lookup_unknown:
                     tags.append("unknown_call")
-            if row.base == base_call(self.selected_call):
+            if _station_key(row.call) == _station_key(self.selected_call):
                 tags.append("selected_watched_active" if row.watched else "selected_call")
             display_call = self.active_call_display(row, ref)
             iid = f"call_{i}_{row.base}"
@@ -1648,9 +1655,9 @@ class MainWindow(_GroupActivityMixin, _MessagePopupsMixin, _UISubstrateMixin, _R
         for r in self.all_activity_rows:
             if r.watch_hit:
                 counts["watchmsg"] += 1
-            if r.base in seen:
+            if _station_key(r.call) in seen:
                 continue
-            seen.add(r.base)
+            seen.add(_station_key(r.call))
             counts["total"] += 1
             if r.category == "both" or "[RSNR:" in (r.text or "").upper(): counts["both"] += 1
             elif r.category == "hearing_me": counts["hearing_me"] += 1
@@ -1810,7 +1817,7 @@ class MainWindow(_GroupActivityMixin, _MessagePopupsMixin, _UISubstrateMixin, _R
         return clean_call_display(values[0] if values else "")
 
     def restore_selected_row_highlight(self) -> None:
-        selected_base = base_call(self.selected_call)
+        selected_base = _station_key(self.selected_call)
         if not selected_base:
             return
         old_guard = self._syncing_selection
@@ -1818,7 +1825,7 @@ class MainWindow(_GroupActivityMixin, _MessagePopupsMixin, _UISubstrateMixin, _R
         try:
             try:
                 for item, call in getattr(self, "_activity_iid_to_call", {}).items():
-                    if base_call(call) == selected_base and self.activity_tree.exists(item):
+                    if _station_key(call) == selected_base and self.activity_tree.exists(item):
                         self.activity_tree.selection_set(item)
                         self.activity_tree.focus(item)
                         break
@@ -1826,7 +1833,7 @@ class MainWindow(_GroupActivityMixin, _MessagePopupsMixin, _UISubstrateMixin, _R
                 pass
             try:
                 for item, call in getattr(self, "_calls_iid_to_call", {}).items():
-                    if base_call(call) == selected_base and self.calls_tree.exists(item):
+                    if _station_key(call) == selected_base and self.calls_tree.exists(item):
                         self.calls_tree.selection_set(item)
                         self.calls_tree.focus(item)
                         break
@@ -1893,8 +1900,8 @@ class MainWindow(_GroupActivityMixin, _MessagePopupsMixin, _UISubstrateMixin, _R
             item = self.calls_tree.identify_row(event.y)
             if not item:
                 return
-            clicked = base_call(self.call_from_calls_item(item))
-            if clicked and clicked == base_call(self.selected_call):
+            clicked = _station_key(self.call_from_calls_item(item))
+            if clicked and clicked == _station_key(self.selected_call):
                 # Second click on the already-selected row -> open.
                 if self._calls_open_recently(clicked):
                     return "break"  # de-dupe a fast double-press / double-click
@@ -1915,7 +1922,7 @@ class MainWindow(_GroupActivityMixin, _MessagePopupsMixin, _UISubstrateMixin, _R
         # If the single-click Option-B path already opened this call an instant
         # ago (fast double-click on an already-selected row), don't open twice.
         try:
-            call = base_call(self.selected_call)
+            call = _station_key(self.selected_call)
             if call and self._calls_open_recently(call):
                 return
         except Exception:
@@ -1951,7 +1958,7 @@ class MainWindow(_GroupActivityMixin, _MessagePopupsMixin, _UISubstrateMixin, _R
             if name: parts.append(name)
             if city or state: parts.append(f"{city}, {state}".strip(", "))
             if klass: parts.append(f"Class: {klass}")
-        row = next((r for r in self.activity_rows if r.base == base_call(call)), None)
+        row = next((r for r in self.activity_rows if _station_key(r.call) == _station_key(call)), None)
         if row:
             if row.watch_hit: parts.append(f"Watch word: {row.watch_hit}")
             parts.append(f"SNR: {row.snr}")
@@ -2020,13 +2027,13 @@ class MainWindow(_GroupActivityMixin, _MessagePopupsMixin, _UISubstrateMixin, _R
         manual = self._coerce_call_list(getattr(self, "manual_calls", None))
         if not manual:
             return rows
-        present = {r.base for r in rows}
+        present = {_station_key(r.call) for r in rows}
         # Honor the operator's watched-calls list so an added station that is
         # also watched renders gold, exactly like a real watched row (the reader
         # sets r.watched = r.base in watched_calls()). Recomputed each refresh,
         # so toggling watched status updates the placeholder on the next poll.
         try:
-            watched_set = set(self.locator.watched_calls() or [])
+            watched_set = {_station_key(x) for x in (self.locator.watched_calls() or [])}
         except Exception:
             watched_set = set()
         # Re-stamp placeholders to "now" each refresh so an added-but-silent
@@ -2036,12 +2043,12 @@ class MainWindow(_GroupActivityMixin, _MessagePopupsMixin, _UISubstrateMixin, _R
             c = norm_call(raw)
             if not c or c.startswith("@"):
                 continue  # groups are handled via the Send Group Target box
-            if base_call(c) in present:
+            if c in present:
                 continue  # real (or already-merged) activity exists — leave it
             rows.append(ActivityRow(call=c, source="manual", category="heard",
                                     timestamp=stamp, snr="", text="",
-                                    watched=base_call(c) in watched_set))
-            present.add(base_call(c))
+                                    watched=c in watched_set))
+            present.add(c)
         return rows
 
     def open_add_call_popup(self) -> None:
@@ -2121,7 +2128,7 @@ class MainWindow(_GroupActivityMixin, _MessagePopupsMixin, _UISubstrateMixin, _R
             return
         if not getattr(self, "manual_calls", None):
             self.manual_calls = []
-        if base_call(c) not in {base_call(x) for x in self.manual_calls}:
+        if c not in {_station_key(x) for x in self.manual_calls}:
             self.manual_calls.append(c)
             # Session-only: do NOT persist. Added stations vanish on relaunch,
             # matching JS8Call's temporary "Add New Station".
@@ -2146,14 +2153,14 @@ class MainWindow(_GroupActivityMixin, _MessagePopupsMixin, _UISubstrateMixin, _R
             self.set_status(f"Added {c}. No FCC record found (non-US or unlicensed).")
 
     def remove_manual_call(self, call: str) -> None:
-        c = base_call(call)
+        c = _station_key(call)
         if not c:
             return
-        self.manual_calls = [x for x in (self.manual_calls or []) if base_call(x) != c]
+        self.manual_calls = [x for x in (self.manual_calls or []) if _station_key(x) != c]
         # Session-only: nothing to persist on removal either.
         # Drop the placeholder row if it carried no real data.
         self.all_activity_rows = [r for r in (getattr(self, "all_activity_rows", []) or [])
-                                  if not (r.base == c and str(getattr(r, "source", "")) == "manual")]
+                                  if not (_station_key(r.call) == c and str(getattr(r, "source", "")) == "manual")]
         self.apply_activity_tile_filter(render=False)
         self.render_activity(); self.render_active_callsigns(); self.render_tiles()
         self.set_status(f"Removed added station {call}.")
@@ -2165,10 +2172,10 @@ class MainWindow(_GroupActivityMixin, _MessagePopupsMixin, _UISubstrateMixin, _R
             if not item:
                 return
             call = self.call_from_calls_item(item)
-            base = base_call(call)
-            if base not in {base_call(x) for x in (getattr(self, "manual_calls", []) or [])}:
+            base = _station_key(call)
+            if base not in {_station_key(x) for x in (getattr(self, "manual_calls", []) or [])}:
                 return  # only added stations get the remove menu
-            has_real = any(r.base == base and str(getattr(r, "source", "")) != "manual"
+            has_real = any(_station_key(r.call) == base and str(getattr(r, "source", "")) != "manual"
                            for r in (getattr(self, "all_activity_rows", []) or []))
             menu = tk.Menu(self, tearoff=0)
             label = f"Remove added station {call}" + ("  (now live)" if has_real else "")
@@ -2243,7 +2250,7 @@ class MainWindow(_GroupActivityMixin, _MessagePopupsMixin, _UISubstrateMixin, _R
                 btn.configure(text="Store Msg", fg=p.text, highlightthickness=0)
 
     def _register_store_button(self, call: str, btn) -> None:
-        b = base_call(call)
+        b = _station_key(call)
         if not b:
             return
         d = getattr(self, "_qso_store_buttons", None)
@@ -2285,7 +2292,7 @@ class MainWindow(_GroupActivityMixin, _MessagePopupsMixin, _UISubstrateMixin, _R
         FastChatPopup(self).open()
 
     def open_store_msg_popup(self, call: str, qso_msg_widget: tk.Text, parent=None) -> None:
-        call = base_call(call); owner = parent or self; p = self.pal()
+        call = _station_key(call); owner = parent or self; p = self.pal()
         win = tk.Toplevel(owner); win.title("Message"); win.geometry(self._popup_geometry(560, 330)); win.transient(owner); win.configure(bg=p.panel)
         tk.Label(win, text=f"Store this message locally for {call}:", bg=p.panel, fg=p.text, font=popup_font("Arial", 14, "normal"), anchor="w").pack(anchor="w", padx=12, pady=(12, 6))
         txt = self.text_box(win, height=9, font=popup_font("Consolas", 17, "bold"))
@@ -2350,7 +2357,7 @@ class MainWindow(_GroupActivityMixin, _MessagePopupsMixin, _UISubstrateMixin, _R
         tk.Label(top, text="i", bg="#179ce8", fg="#ffffff", font=popup_font("Arial", 16, "bold"), width=2).place(x=_s(14), y=_s(34))
         _call_lbl = tk.Label(top, text=call, bg=p.panel, fg=p.text, font=popup_font("Arial", 21, "bold"), anchor="w")
         _call_lbl.place(x=_s(58), y=_s(36))
-        info = self.reader.fcc_info(call); row = next((r for r in self.activity_rows if r.base == base_call(call)), None); lines = []
+        info = self.reader.fcc_info(call); row = next((r for r in self.activity_rows if _station_key(r.call) == _station_key(call)), None); lines = []
         if info:
             name = display_person_name(info.get("name", "")); city = str(info.get("city", "") or "").title(); state = str(info.get("state", "") or "").upper(); klass = str(info.get("class", "") or "")
             if name: lines.append(f"Name: {name}")

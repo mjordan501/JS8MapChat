@@ -58,14 +58,14 @@
 ; AppVersion changes freely. This line does not.
 AppId={{EDFA7F85-3E78-4E27-93C7-B5F15AD792B6}
 AppName=JS8FastChat
-AppVersion=1.75
-AppVerName=JS8FastChat 1.75
+AppVersion=1.75.1
+AppVerName=JS8FastChat 1.75.1
 AppPublisher=KW3KW - Ham Made Simple
 DefaultDirName={autopf}\JS8FastChat
 DefaultGroupName=JS8FastChat
 AllowNoIcons=yes
 OutputDir=installer_output
-OutputBaseFilename=JS8FastChat_v1.75_Setup
+OutputBaseFilename=JS8FastChat_v1.75.1_Setup
 SetupIconFile=JS8FastChat_icon.ico
 Compression=lzma2/ultra64
 SolidCompression=yes
@@ -193,7 +193,7 @@ begin
 end;
 
 [Messages]
-WelcomeLabel1=Welcome to JS8FastChat 1.75 Setup
+WelcomeLabel1=Welcome to JS8FastChat 1.75.1 Setup
 WelcomeLabel2=JS8FastChat is the operator console that works alongside JS8Map.%n%nIt handles directed messages, queries and group traffic, and shares the callsign and activity data that JS8Map collects.%n%nINSTALL JS8MAP FIRST. JS8FastChat reads the databases JS8Map downloads, and has nothing to show without them.%n%nClick Next to continue.
-FinishedHeadingLabel=JS8FastChat 1.75 Installation Complete
-FinishedLabel=JS8FastChat 1.75 has been installed successfully!%n%nBefore launching:%n%n  1. Install and run JS8Map, and let its setup download the callsign databases%n  2. Start JS8Call and enable the TCP API (port 2442)%n  3. Launch JS8FastChat from your desktop shortcut%n%nJS8Map and JS8FastChat each run in their own window. Neither one starts the other, but each has a button to bring the other to the front.%n%n73 de KW3KW
+FinishedHeadingLabel=JS8FastChat 1.75.1 Installation Complete
+FinishedLabel=JS8FastChat 1.75.1 has been installed successfully!%n%nBefore launching:%n%n  1. Install and run JS8Map, and let its setup download the callsign databases%n  2. Start JS8Call and enable the TCP API (port 2442)%n  3. Launch JS8FastChat from your desktop shortcut%n%nJS8Map and JS8FastChat each run in their own window. Neither one starts the other, but each has a button to bring the other to the front.%n%n73 de KW3KW

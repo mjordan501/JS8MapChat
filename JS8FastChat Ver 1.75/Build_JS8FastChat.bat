@@ -108,17 +108,17 @@ if errorlevel 1 (
 )
 
 echo.
-if exist "installer_output\JS8FastChat_v1.75_Setup.exe" (
+if exist "installer_output\JS8FastChat_v1.75.1_Setup.exe" (
     echo   INSTALLER OK.
     echo.
-    for %%F in ("installer_output\JS8FastChat_v1.75_Setup.exe") do echo   %%~tF   %%~zF bytes   %%~fF
+    for %%F in ("installer_output\JS8FastChat_v1.75.1_Setup.exe") do echo   %%~tF   %%~zF bytes   %%~fF
     echo.
     echo   ^>^> CHECK THE TIMESTAMP ABOVE. It must be from SECONDS ago.
     echo.
     echo   Give this ONE file to anyone who wants JS8FastChat.
     echo   Install JS8Map FIRST -- FastChat reads the databases it downloads.
 ) else (
-    echo   [FAILED] installer_output\JS8FastChat_v1.75_Setup.exe was NOT created.
+    echo   [FAILED] installer_output\JS8FastChat_v1.75.1_Setup.exe was NOT created.
 )
 
 :end

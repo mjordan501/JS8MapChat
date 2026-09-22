@@ -21,7 +21,7 @@
 
 set -e
 
-VERSION="1.75"
+VERSION="1.75.1"
 PKGNAME="JS8FastChat_v${VERSION}_linux"
 
 cd "$(dirname "$0")"
@@ -273,7 +273,7 @@ if [ -x "${APPDIR}/JS8FastChat" ]; then
     echo "Start order:  JS8Call first, then JS8Map, then JS8FastChat."
     echo ""
     echo "In JS8Call, open File > Settings > Reporting and set"
-    echo "TCP Max Connections to 4. At 1 there are not enough"
+    echo "TCP Max Connections to 5. At 1 there are not enough"
     echo "connections for both JS8Map and FastChat."
 else
     echo "WARNING: the install finished but the folder above does not look right."
@@ -369,7 +369,7 @@ an icon on your desktop.
 BEFORE YOU RUN IT
 -----------------
 In JS8Call, open File > Settings > Reporting and set TCP Max Connections
-to 4. JS8Call ships with this set to 1, and at 1 there are not enough
+to 5. JS8Call ships with this set to 1, and at 1 there are not enough
 connections to go round -- JS8Map takes the only one and FastChat gets
 nothing.
 

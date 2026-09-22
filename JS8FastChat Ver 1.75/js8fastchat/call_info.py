@@ -28,7 +28,7 @@ from pathlib import Path
 from .models import ActivityRow
 from .data.zip3_latlon import ZIP3_LATLON
 from .data.js8call_ini import find_js8call_ini
-from .utils import base_call, debug, debug_exc
+from .utils import base_call, debug, debug_exc, norm_call
 
 
 class CallInfo:
@@ -104,12 +104,12 @@ class CallInfo:
 
     def _rows_for_call(self, call: str) -> list[ActivityRow]:
         """Return all known rows for a callsign, preferring operator-facing rows first."""
-        base = base_call(call)
+        base = norm_call(call)  # full call: W3BFO/P is its own station
         out: list[ActivityRow] = []
         seen: set[tuple[str, str, str, str]] = set()
         for source_rows in (getattr(self, "activity_rows", []) or [], getattr(self, "all_activity_rows", []) or []):
             for row in source_rows:
-                if row.base != base:
+                if norm_call(str(row.call or "")) != base:
                     continue
                 key = (str(row.timestamp or ""), str(row.source or ""), str(row.text or ""), str(row.grid or ""))
                 if key in seen:
@@ -124,9 +124,9 @@ class CallInfo:
         This avoids raw heartbeat/SNR/spot rows forcing FastChat's HEARD line to
         show 0s ago while the callsign list correctly shows an older age.
         """
-        base = base_call(call)
+        base = norm_call(call)
         for row in getattr(self, "activity_rows", []) or []:
-            if row.base == base:
+            if norm_call(str(row.call or "")) == base:
                 return row
         rows = self._rows_for_call(call)
         if not rows:
@@ -151,7 +151,7 @@ class CallInfo:
         Best-effort: any DB/schema problem returns None so the caller falls back
         to the in-memory scan and the ACK/YES/-- semantics. Never writes."""
         my_call = base_call(self.locator.callsign())
-        target = base_call(call)
+        target = norm_call(call)
         if not my_call or not target:
             return None
         db_path = getattr(self.locator, "spot_db", "") or ""
@@ -191,7 +191,7 @@ class CallInfo:
                         "   AND (from_call = ? OR from_call LIKE ?)"
                         "   AND timestamp >= ?"
                         " ORDER BY timestamp DESC LIMIT 50",
-                        (my_call, f"{my_call}/%", target, f"{target}/%", cutoff),
+                        (my_call, f"{my_call}/%", target, target, cutoff),
                     ).fetchall()
                 except Exception:
                     rows = []
@@ -210,7 +210,7 @@ class CallInfo:
                         "   AND UPPER(text) LIKE '%SNR%'"
                         "   AND UPPER(text) NOT LIKE '%SNR?%'"
                         " ORDER BY timestamp DESC LIMIT 50",
-                        (target, f"{target}/%", cutoff, f"%{my_call}%"),
+                        (target, target, cutoff, f"%{my_call}%"),
                     ).fetchall()
                 except Exception:
                     rows = []
@@ -340,7 +340,7 @@ class CallInfo:
         db_path = str(getattr(self.locator, "spot_db", "") or "")
         if not db_path or not Path(db_path).exists():
             return ""
-        base = base_call(call)
+        base = norm_call(call)
         call_cols = {"callsign", "call", "from_call", "from", "de", "station", "station_call"}
         grid_cols = {"grid", "grid_square", "gridsquare", "maidenhead", "locator", "qth_grid"}
         time_cols = ("timestamp", "time", "heard", "last_heard", "last_seen", "created_at", "updated_at")
@@ -368,7 +368,7 @@ class CallInfo:
                     order_sql = f" ORDER BY {self._quote_sql_ident(order_col)} DESC" if order_col else ""
                     sql = f"SELECT {self._quote_sql_ident(grid_col)} FROM {self._quote_sql_ident(table)} WHERE UPPER({self._quote_sql_ident(call_col)}) = ? OR UPPER({self._quote_sql_ident(call_col)}) LIKE ?{order_sql} LIMIT 10"
                     try:
-                        for (grid_raw,) in con.execute(sql, (base, base + "/%")):
+                        for (grid_raw,) in con.execute(sql, (base, base)):
                             grid = self._valid_grid(grid_raw)
                             if grid:
                                 return grid
@@ -382,13 +382,13 @@ class CallInfo:
         db_path = str(getattr(self.locator, "spot_db", "") or "")
         if not db_path or not Path(db_path).exists():
             return ""
-        base = base_call(call)
+        base = norm_call(call)
         try:
             with closing(sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=1.5)) as con:
                 con.execute("PRAGMA query_only=ON")
                 # Directed GRID replies: CALL: KW3KW GRID FM29
                 try:
-                    rows = con.execute("SELECT text FROM directed WHERE UPPER(from_call)=? OR UPPER(from_call) LIKE ? ORDER BY timestamp DESC LIMIT 80", (base, base + "/%"))
+                    rows = con.execute("SELECT text FROM directed WHERE UPPER(from_call)=? OR UPPER(from_call) LIKE ? ORDER BY timestamp DESC LIMIT 80", (base, base))
                     for (text,) in rows:
                         up = str(text or "").upper()
                         if "HEARING" in up:
@@ -402,7 +402,7 @@ class CallInfo:
                     pass
                 # HEARTBEAT text can include the sender's own grid.
                 try:
-                    rows = con.execute("SELECT text FROM band_activity WHERE UPPER(callsign)=? OR UPPER(callsign) LIKE ? ORDER BY timestamp DESC LIMIT 120", (base, base + "/%"))
+                    rows = con.execute("SELECT text FROM band_activity WHERE UPPER(callsign)=? OR UPPER(callsign) LIKE ? ORDER BY timestamp DESC LIMIT 120", (base, base))
                     for (text,) in rows:
                         up = str(text or "").upper()
                         if "HEARTBEAT" not in up:
@@ -456,7 +456,7 @@ class CallInfo:
         db_path = str(getattr(self.locator, "spot_db", "") or "")
         if not db_path or not Path(db_path).exists():
             return "--"
-        base = base_call(call)
+        base = norm_call(call)
         call_cols = {"callsign", "call", "from_call", "from", "de", "station", "station_call"}
         mi_cols = {"mi", "mile", "miles", "distance_mi", "distance_miles", "dist_mi", "dist_miles", "range_mi", "range_miles"}
         km_cols = {"km", "kilometer", "kilometers", "distance_km", "dist_km", "range_km"}
@@ -497,7 +497,7 @@ class CallInfo:
                     order_sql = f" ORDER BY {self._quote_sql_ident(order_col)} DESC" if order_col else ""
                     sql = f"SELECT {', '.join(select_parts)} FROM {self._quote_sql_ident(table)} WHERE UPPER({self._quote_sql_ident(call_col)}) = ? OR UPPER({self._quote_sql_ident(call_col)}) LIKE ?{order_sql} LIMIT 5"
                     try:
-                        for mi, km in con.execute(sql, (base, base + "/%")):
+                        for mi, km in con.execute(sql, (base, base)):
                             txt = self._format_distance_pair(mi, km)
                             if txt != "--":
                                 return txt

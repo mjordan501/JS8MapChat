@@ -198,7 +198,7 @@ class ActivityReader:
                 for sql, params in queries:
                     try:
                         for call, group in con.execute(sql, params):
-                            b = base_call(call)
+                            b = norm_call(str(call or ""))
                             g = norm_call(group)
                             if b and g.startswith("@"):
                                 out.setdefault(b, set()).add(g)
@@ -319,7 +319,7 @@ class ActivityReader:
                     # every inbox_msgs row is by construction a real stored message.
                     if "text" in data and not self._is_real_inbox_text(data.get("text")):
                         continue
-                    b = base_call(data.get("from_call"))
+                    b = norm_call(str(data.get("from_call") or ""))
                     if b:
                         out[b] = out.get(b, 0) + 1
         except Exception:
@@ -337,7 +337,7 @@ class ActivityReader:
         # of "time window start" and "moment of last clear".
         cutoff = self._max_cutoff(cutoff, self.clear_watermark)
         my_call = base_call(self.locator.callsign())
-        watched = self.locator.watched_calls()
+        watched = {norm_call(w) for w in (self.locator.watched_calls() or [])}
         group_map = self.group_activity_map(cutoff)
         inbox_counts = self.inbox_counts_by_call(my_call)
         # @ALLCALL is the JS8 universal-broadcast group every station implicitly
@@ -364,7 +364,7 @@ class ActivityReader:
                         c = norm_call(call)
                         if not c or c.startswith("@") or is_protocol_word(c) or not looks_like_callsign(c):
                             continue
-                        groups_for_call = sorted(group_map.get(base_call(c), set()))
+                        groups_for_call = sorted(group_map.get(c, set()))
                         if gf != GROUP_ALL and gf not in groups_for_call:
                             continue
                         rows.append(ActivityRow(call=c, group=groups_for_call[0] if groups_for_call else "", snr=snr, freq=freq, offset=offset, grid=str(grid or "").upper(), timestamp=str(ts or ""), source=str(src or "spot"), text=f"SPOT {str(grid or '').upper()}" if grid else "SPOT"))
@@ -377,7 +377,7 @@ class ActivityReader:
                         c = norm_call(call)
                         if not c or c.startswith("@") or is_protocol_word(c) or not looks_like_callsign(c):
                             continue
-                        groups_for_call = sorted(group_map.get(base_call(c), set()))
+                        groups_for_call = sorted(group_map.get(c, set()))
                         if gf != GROUP_ALL and gf not in groups_for_call:
                             continue
                         rows.append(ActivityRow(call=c, group=groups_for_call[0] if groups_for_call else "", snr=snr, freq=freq, offset=offset, text=str(text or ""), timestamp=str(ts or ""), source="band"))
@@ -391,7 +391,7 @@ class ActivityReader:
                         to = norm_call(to_call)
                         if not c or c.startswith("@") or is_protocol_word(c) or not looks_like_callsign(c):
                             continue
-                        groups_for_call = sorted(group_map.get(base_call(c), set()))
+                        groups_for_call = sorted(group_map.get(c, set()))
                         group = to if to.startswith("@") else (groups_for_call[0] if groups_for_call else "")
                         if gf != GROUP_ALL:
                             if to.startswith("@"):
@@ -408,14 +408,14 @@ class ActivityReader:
 
         evidence: Dict[str, set[str]] = {}
         for r in rows:
-            ev = evidence.setdefault(r.base, set())
+            ev = evidence.setdefault(r.call, set())
             ev.add("heard")
             txt_up = (r.text or "").upper()
             to_base = base_call(r.to_call)
             if r.category == "hearing_me" or "[RSNR:" in txt_up or (my_call and f"{my_call} SNR" in txt_up) or (my_call and to_base == my_call):
                 ev.add("hearing_me")
         for r in rows:
-            ev = evidence.get(r.base, set())
+            ev = evidence.get(r.call, set())
             # No `elif "hearing_me"` case: every row here came from OUR receiver
             # decoding a frame, so "heard" is true by construction and is added
             # unconditionally above. That makes hearing-me-without-hearing-them
@@ -427,12 +427,12 @@ class ActivityReader:
             # roadmap, so it is deleted rather than left as a branch nobody trusts.
             if "heard" in ev and "hearing_me" in ev:
                 r.category = "both"
-            r.watched = r.base in watched
+            r.watched = r.call in watched
             r.watch_hit = match_watch_words(r.text or "", self.msg_watch_words)
             # Message flagging must be sender-specific. Do this from a single
             # inbox summary query instead of treating every directed MSG-like
             # line as an inbox message.
-            r.inbox_count = inbox_counts.get(r.base, 0)
+            r.inbox_count = inbox_counts.get(r.call, 0)
             if include_counts:
                 r.relay_count = self.relay_count_for(r.call)
         rows.sort(key=lambda r: r.timestamp, reverse=True)
@@ -571,10 +571,10 @@ class ActivityReader:
         # and are not counted. This matches JS8Call's own per-station frame list.
         activity_events: Dict[str, set] = {}
         for row in all_rows:
-            core = self._activity_core(row.text, row.base)
+            core = self._activity_core(row.text, row.call)
             if core is None:
                 continue
-            activity_events.setdefault(row.base, set()).add(core)
+            activity_events.setdefault(row.call, set()).add(core)
         # Bug #5 fix: while we still choose ONE representative row per callsign
         # for display (newest-with-text, as before), that choice must NOT lose
         # the directed-message info (to_call, group, and the "both"/"hearing_me"
@@ -592,7 +592,7 @@ class ActivityReader:
         best_group: Dict[str, str] = {}
         best_cat: Dict[str, str] = {}
         for row in all_rows:
-            b = row.base
+            b = row.call
             if row.to_call and not best_to.get(b):
                 best_to[b] = row.to_call
             if row.group and not best_group.get(b):
@@ -602,40 +602,40 @@ class ActivityReader:
 
         by_call: Dict[str, ActivityRow] = {}
         for row in all_rows:
-            existing = by_call.get(row.base)
+            existing = by_call.get(row.call)
             if not existing:
-                by_call[row.base] = row
+                by_call[row.call] = row
                 continue
             row_has_text = bool(row.text and row.text.strip() and row.text.strip() != "SPOT")
             existing_has_text = bool(existing.text and existing.text.strip() and existing.text.strip() != "SPOT")
             if row.watch_hit and not existing.watch_hit:
-                by_call[row.base] = row
+                by_call[row.call] = row
             elif row_has_text and not existing_has_text:
-                by_call[row.base] = row
+                by_call[row.call] = row
             elif row.timestamp > existing.timestamp and (row.watch_hit or row_has_text or not existing_has_text):
-                by_call[row.base] = row
+                by_call[row.call] = row
         rows = list(by_call.values())
         for r in rows:
             # Back-fill the directed info the winning row may have lacked, so the
             # TO column, group tag, and Mutual status survive dedup even when a
             # newer bare heartbeat row was chosen for display.
-            if not r.to_call and best_to.get(r.base):
-                r.to_call = best_to[r.base]
-            if not r.group and best_group.get(r.base):
-                r.group = best_group[r.base]
-            if _CAT_RANK.get(best_cat.get(r.base, ""), 0) > _CAT_RANK.get(r.category, 0):
-                r.category = best_cat[r.base]
+            if not r.to_call and best_to.get(r.call):
+                r.to_call = best_to[r.call]
+            if not r.group and best_group.get(r.call):
+                r.group = best_group[r.call]
+            if _CAT_RANK.get(best_cat.get(r.call, ""), 0) > _CAT_RANK.get(r.category, 0):
+                r.category = best_cat[r.call]
             # Set as a plain attribute, mirroring how inbox_count / relay_count
             # are attached in read_activity(). The display side reads it with a
             # getattr default, so manual/session-only rows (which never pass
             # through here) safely show 0.
-            r.activity_count = len(activity_events.get(r.base, ()))
+            r.activity_count = len(activity_events.get(r.call, ()))
         rows.sort(key=lambda r: r.timestamp, reverse=True)
         # Cap DISTINCT callsigns (newest-first), never raw rows.
         return rows[:limit]
 
     def inbox_count_for(self, callsign: str) -> int:
-        b = base_call(callsign)
+        b = norm_call(callsign)
         if not b:
             return 0
         return int(self.inbox_counts_by_call(self.locator.callsign()).get(b, 0))
@@ -926,7 +926,7 @@ class ActivityReader:
     def outbox_rows_for(self, callsign: str, my_call: str = "", limit: int = 200) -> list[dict]:
         """Messages I am holding LOCALLY for `callsign`, still waiting to be
         picked up (they sent me no QUERY MSGS yet). FROM = me, TO = them."""
-        b = base_call(callsign)
+        b = norm_call(callsign)
         me = base_call(my_call)
         if not b or not me:
             return []
@@ -934,7 +934,7 @@ class ActivityReader:
         for m in self.read_js8call_inbox():
             if base_call(m.get("from_call", "")) != me:
                 continue
-            if base_call(m.get("to_call", "")) != b:
+            if norm_call(str(m.get("to_call", "") or "")) != b:
                 continue
             if str(m.get("msg_type", "")).upper() in self.OUTBOX_DONE_TYPES:
                 continue  # already picked up / no longer waiting
@@ -1059,7 +1059,7 @@ class ActivityReader:
         return deleted, backup, ""
 
     def inbox_rows_for(self, callsign: str, to_me_only: bool = True, my_call: str = "", limit: int = 200) -> list[dict]:
-        b = base_call(callsign)
+        b = norm_call(callsign)
         me = base_call(my_call)
         if to_me_only and not me:
             # "To Me Only" requested but the operator callsign is unknown. Fail
@@ -1071,7 +1071,7 @@ class ActivityReader:
         # JS8Call's Message Inbox window).
         rows: list[dict] = []
         for m in self.read_js8call_inbox():
-            if base_call(m.get("from_call", "")) != b:
+            if norm_call(str(m.get("from_call", "") or "")) != b:
                 continue
             if to_me_only and base_call(m.get("to_call", "")) != me:
                 continue
@@ -1106,14 +1106,14 @@ class ActivityReader:
         directed traffic IS the implementation, not a fallback from one.
         """
         rows: list[dict] = []
-        b = base_call(callsign)
+        b = norm_call(callsign)
         me = base_call(my_call)
         if to_me_only and not me:
             return rows
         # Derive from directed rows containing MSG, avoiding MSG ID / RSNR metadata.
         try:
             for r in self.read_activity("All available", limit=limit):
-                if r.base != b:
+                if r.call != b:
                     continue
                 if to_me_only and base_call(r.to_call) != me:
                     continue

@@ -23,7 +23,7 @@ from ..constants import (
     APP_VERSION, DEFAULT_GROUPS, GROUP_ALL, LAYOUT_PATH, TIME_FILTERS,
 )
 from ..models import ActivityRow
-from ..utils import base_call, debug_exc, fmt_freq, parse_ts, write_json
+from ..utils import base_call, debug_exc, fmt_freq, norm_call, parse_ts, write_json
 
 
 class _GroupActivityMixin:
@@ -42,7 +42,7 @@ class _GroupActivityMixin:
             groups.add(match)
         if group_map:
             try:
-                groups.update(str(g).upper() for g in group_map.get(row.base, set()) if str(g or "").startswith("@"))
+                groups.update(str(g).upper() for g in group_map.get(norm_call(str(row.call or "")), set()) if str(g or "").startswith("@"))
             except Exception:
                 pass
         return sorted(g for g in groups if g and g != "@HB")
@@ -59,7 +59,7 @@ class _GroupActivityMixin:
         collapse correctly.
         """
         text = str(row.text or "").upper().strip()
-        call = base_call(row.call)
+        call = norm_call(str(row.call or ""))
         if call:
             text = re.sub(rf"^\s*{re.escape(call)}\s*:\s*", "", text)
         text = re.sub(r"\[RSNR:[^\]]+\]", "", text, flags=re.I)
@@ -238,8 +238,8 @@ class _GroupActivityMixin:
 
         def key_for(row: ActivityRow) -> tuple:
             norm = self._group_activity_normalized_text(row)
-            call = base_call(row.call)
-            to = base_call(row.to_call)
+            call = norm_call(str(row.call or ""))
+            to = norm_call(str(row.to_call or ""))
             timestamp_minute = str(row.timestamp or "")[:16]
             freq = fmt_freq(row.freq)
             group = str(row.group or "").upper().strip()
@@ -565,7 +565,7 @@ class _GroupActivityMixin:
                 raw = re.sub(r"[^A-Z0-9._-]+", "_", raw).strip("_")
                 return raw[:60] or default
             stamp = safe_part(self._group_activity_timestamp_utc(row.timestamp).replace(" UTC", "").replace(":", "-").replace(" ", "_"), "TIME")
-            call = safe_part(base_call(row.call), "CALL")
+            call = safe_part(norm_call(str(row.call or "")), "CALL")
             group = safe_part(self._group_activity_group_display(row, group_map_holder["map"]), "GROUP")
             tag = safe_part(self._group_activity_tag(row).replace("/", "-"), "TAG")
             path = exports / f"{stamp}_{call}_{group}_{tag}.txt"
@@ -577,7 +577,7 @@ class _GroupActivityMixin:
             if not row:
                 self.set_status("No Group Activity row selected for FastChat.")
                 return
-            call = base_call(row.call)
+            call = norm_call(str(row.call or ""))
             if not call:
                 self.set_status("Selected row has no usable callsign.")
                 return
@@ -632,7 +632,7 @@ class _GroupActivityMixin:
             self.set_status("Activity Detail copied to clipboard.")
 
         def open_fastchat() -> None:
-            call = base_call(row.call)
+            call = norm_call(str(row.call or ""))
             if call:
                 self.set_selected_call(call, source="group_activity_detail")
                 self.open_qso_popup()

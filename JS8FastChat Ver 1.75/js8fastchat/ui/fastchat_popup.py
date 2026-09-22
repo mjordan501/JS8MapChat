@@ -41,7 +41,7 @@ from datetime import datetime, timezone
 from tkinter import messagebox, simpledialog, ttk
 
 from ..constants import APP_VERSION, LIVE_RIG_GREEN, SPEEDS, TIME_FILTERS
-from ..utils import base_call, display_person_name, fmt_age
+from ..utils import base_call, display_person_name, fmt_age, norm_call
 from .main_window_ui_substrate import popup_font
 from .tx_indicator import TxIndicator
 
@@ -251,7 +251,7 @@ class FastChatPopup:
         Mirrors the data merge in MainWindow.open_history_popup, minus SNR/HB
         clutter, with received shown green instead of red."""
         host = self.host
-        base = base_call(call)
+        base = norm_call(call)  # full call: W3BFO/P is its own station
         needle = (needle or "").upper().strip()
         with host.soft(f"render qso chat {call}", log=False):
             if not txt.winfo_exists():
@@ -262,7 +262,7 @@ class FastChatPopup:
             def matches(hay: str) -> bool:
                 return (not needle) or needle in hay.upper()
 
-            rows = [r for r in host.reader.read_activity(time_label, limit=1000) if r.base == base]
+            rows = [r for r in host.reader.read_activity(time_label, limit=1000) if norm_call(str(r.call or "")) == base]
             incoming: dict = {}
             # An SNR reply reaches the DB TWICE, ~30s apart, in two formats:
             # the machine-tagged "KW3KW SNR +03 [RSNR:+03]" lands immediately,
@@ -394,7 +394,7 @@ class FastChatPopup:
         call = host.selected_call
         # Single-instance guard: reuse an existing popup for this callsign.
         try:
-            _existing = host._qso_latest_widgets.get(base_call(call))
+            _existing = host._qso_latest_widgets.get(norm_call(call))
             if _existing is not None and _existing.winfo_exists():
                 _win = _existing.winfo_toplevel()
                 _win.deiconify()
@@ -658,7 +658,7 @@ class FastChatPopup:
             render_chat()
 
         chat_txt._mj_repaint = repaint
-        host._qso_latest_widgets[base_call(call)] = chat_txt
+        host._qso_latest_widgets[norm_call(call)] = chat_txt
 
         hist_time_var.trace_add("write", lambda *_: render_chat())
         hist_search_var.trace_add("write", lambda *_: render_chat())
@@ -675,7 +675,7 @@ class FastChatPopup:
             # closing the FIRST deregistered the SECOND, which was still open:
             # it kept limping on its 15s heartbeat and looked merely "slow to
             # update". Only clear the entry if it is still OURS.
-            _b = base_call(call)
+            _b = norm_call(call)
             if host._qso_latest_widgets.get(_b) is chat_txt:
                 host._qso_latest_widgets.pop(_b, None)
 

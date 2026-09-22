@@ -10,6 +10,11 @@ def _base_call(c) -> str:
     return c.split("/")[0] if "/" in c else c
 
 
+def _full_call(c) -> str:
+    # The whole call, /P kept: W3BFO and W3BFO/P are two stations (bug 3).
+    return str(c or "").strip().upper()
+
+
 class RxPartialStore:
     """In-process assembler for long INCOMING JS8 messages (live preview).
 
@@ -53,7 +58,7 @@ class RxPartialStore:
         if sep:
             token = head.strip().replace("/", "")
             if token and token.replace("-", "").isalnum() and any(ch.isdigit() for ch in token):
-                return _base_call(head.strip()), rest
+                return _full_call(head.strip()), rest
         return None, up
 
     @staticmethod
@@ -108,11 +113,11 @@ class RxPartialStore:
         (its RX.DIRECTED arrived). Matches by offset first, then by sender."""
         try:
             off = int(offset or 0)
-            fb = _base_call(from_call)
+            fb = _full_call(from_call)
             with self._lock:
                 drop = [o for o in self._parts if abs(o - off) <= self._OFFSET_TOL]
                 if not drop and fb:
-                    drop = [o for o, e in self._parts.items() if _base_call(e["from"]) == fb]
+                    drop = [o for o, e in self._parts.items() if _full_call(e["from"]) == fb]
                 for o in drop:
                     self._parts.pop(o, None)
         except Exception:
@@ -124,14 +129,14 @@ class RxPartialStore:
         multi-frame messages (>= 2 frames) are exposed, so single-frame traffic
         (SNR replies, heartbeats) never produces a preview line."""
         try:
-            base = _base_call(call)
+            base = _full_call(call)
             with self._lock:
                 self._prune()
                 best = None
                 for e in self._parts.values():
                     if e["frags"] < self._MIN_FRAMES:
                         continue
-                    if _base_call(e["from"]) != base:
+                    if _full_call(e["from"]) != base:
                         continue
                     best = e
                 if not best:

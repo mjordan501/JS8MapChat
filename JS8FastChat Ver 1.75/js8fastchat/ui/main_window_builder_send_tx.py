@@ -99,7 +99,7 @@ class _BuilderSendTxMixin:
         return aud
 
     def open_query_call_popup(self, target_call: str = "", parent=None) -> None:
-        target = base_call(target_call or self.selected_call or norm_call(self.manual_call_var.get()))
+        target = norm_call(target_call or self.selected_call or norm_call(self.manual_call_var.get()))
         if not target:
             self.set_status("Select or type the callsign to query first.")
             return
@@ -162,7 +162,7 @@ class _BuilderSendTxMixin:
             pass
 
     def build_query_call_frame(self, target_call: str = "") -> str:
-        target = base_call(target_call or self.selected_call or norm_call(self.manual_call_var.get()))
+        target = norm_call(target_call or self.selected_call or norm_call(self.manual_call_var.get()))
         return f"{self.query_audience_from_send_group()} QUERY CALL {target}?" if target else ""
 
     def themed_input(self, title: str, prompt: str, initial: str = "", uppercase: bool = True, width: int = 420, height: int = 150) -> "str | None":
@@ -288,9 +288,15 @@ class _BuilderSendTxMixin:
         activity rows the Incoming Activity list shows, newest first; returns ''
         if we have no numeric SNR on record for them yet."""
         base = base_call(call)
+        full = norm_call(call)
         best = ""
         best_ts = ""
         for row in self.call_info._rows_for_call(base):
+            # Rows come back for the BASE call, so W3BFO and W3BFO/P arrive
+            # mixed. Keep only this exact station, or a report could carry
+            # the SNR we measured on the other rig.
+            if norm_call(getattr(row, "call", "")) != full:
+                continue
             m = re.search(r"[+\-]?\d+", str(getattr(row, "snr", "") or ""))
             if not m:
                 continue
@@ -320,7 +326,7 @@ class _BuilderSendTxMixin:
         parent: the window the confirm box should attach to. FastChat passes its
         own Toplevel so the box doesn't raise the main window over FastChat."""
         send_word = command.rstrip("?")  # "SNR?" -> "SNR"
-        target = base_call(target_call or self.selected_call or norm_call(self.manual_call_var.get()))
+        target = norm_call(target_call or self.selected_call or norm_call(self.manual_call_var.get()))
         if not target:
             self.set_status(f"Select a callsign before sending your {send_word}.")
             return
@@ -580,7 +586,7 @@ class _BuilderSendTxMixin:
             if not frame:
                 return
             parts = frame.split()
-            target = base_call(parts[0]) if parts else ""
+            target = norm_call(parts[0]) if parts else ""
             row = {
                 "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
                 "from": self.locator.callsign() or "KW3KW",
@@ -616,8 +622,8 @@ class _BuilderSendTxMixin:
         with self.soft("local_outgoing_history_for"):
             data = read_json(TX_HISTORY_PATH)
             rows = data.get("rows", []) if isinstance(data, dict) else []
-            target = base_call(call)
-            out = [r for r in rows if base_call(r.get("to", "")) == target]
+            target = norm_call(call)
+            out = [r for r in rows if norm_call(str(r.get("to", "") or "")) == target]
             hours = TIME_FILTERS.get(time_label or "", None)
             if hours is not None:
                 cutoff_utc = datetime.now(timezone.utc) - timedelta(hours=float(hours))
@@ -652,8 +658,8 @@ class _BuilderSendTxMixin:
         with self.soft("observed_outgoing_history_for"):
             data = read_json(OBSERVED_TX_PATH)
             rows = data.get("rows", []) if isinstance(data, dict) else []
-            target = base_call(call)
-            out = [r for r in rows if base_call(r.get("to", "")) == target]
+            target = norm_call(call)
+            out = [r for r in rows if norm_call(str(r.get("to", "") or "")) == target]
             hours = TIME_FILTERS.get(time_label or "", None)
             if hours is not None:
                 cutoff_utc = datetime.now(timezone.utc) - timedelta(hours=float(hours))
@@ -704,8 +710,8 @@ class _BuilderSendTxMixin:
         with self.soft("clear_local_outgoing_history_for"):
             data = read_json(TX_HISTORY_PATH)
             rows = data.get("rows", []) if isinstance(data, dict) else []
-            target = base_call(call)
-            kept = [r for r in rows if base_call(r.get("to", "")) != target]
+            target = norm_call(call)
+            kept = [r for r in rows if norm_call(str(r.get("to", "") or "")) != target]
             removed = len(rows) - len(kept)
             write_json(TX_HISTORY_PATH, {"rows": kept})
             return removed
@@ -726,9 +732,20 @@ class _BuilderSendTxMixin:
             for call, rows in calls.items():
                 if not isinstance(rows, list):
                     continue
-                c = base_call(call)
-                self._capture_store[c] = [r for r in rows if isinstance(r, dict)]
-                self._capture_keys[c] = {(str(r.get("timestamp", "")), str(r.get("text", ""))) for r in self._capture_store[c]}
+                # Older files filed W3BFO and W3BFO/P together under W3BFO.
+                # File each row under its own sender so the two separate again.
+                for r in rows:
+                    if not isinstance(r, dict):
+                        continue
+                    c = norm_call(str(r.get("from") or call))
+                    if not c:
+                        continue
+                    k = (str(r.get("timestamp", "")), str(r.get("text", "")))
+                    seen = self._capture_keys.setdefault(c, set())
+                    if k in seen:
+                        continue
+                    seen.add(k)
+                    self._capture_store.setdefault(c, []).append(r)
         except Exception:
             debug_exc("ensure_capture_loaded")
 
@@ -747,7 +764,7 @@ class _BuilderSendTxMixin:
                     text = (row.text or "").strip()
                     if not text:
                         continue
-                    c = base_call(row.call)
+                    c = norm_call(str(row.call or ""))
                     if not c:
                         continue
                     ts = str(row.timestamp or "")
@@ -789,7 +806,7 @@ class _BuilderSendTxMixin:
 
     def captured_history_for(self, call: str, time_label: str | None = None, search_text: str = "") -> list[dict]:
         self._ensure_capture_loaded()
-        c = base_call(call)
+        c = norm_call(call)
         rows = self._capture_store.get(c, [])
         needle = (search_text or "").upper().strip()
         cutoff = ""
