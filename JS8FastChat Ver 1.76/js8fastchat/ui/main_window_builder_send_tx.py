@@ -589,7 +589,7 @@ class _BuilderSendTxMixin:
             target = norm_call(parts[0]) if parts else ""
             row = {
                 "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
-                "from": self.locator.callsign() or "KW3KW",
+                "from": self.locator.callsign() or "",
                 "to": target,
                 "context": str(context or "TX"),
                 "text": frame,

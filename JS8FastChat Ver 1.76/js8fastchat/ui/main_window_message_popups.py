@@ -321,13 +321,13 @@ class _MessagePopupsMixin:
                 udt = self._history_ts_utc(ts)
                 disp = udt.strftime("%Y-%m-%d %H:%M:%S UTC") if udt else ts
                 body = self._clean_msg(r.get("text", ""))
-                sent[_sent_key(udt, body)] = (udt, "tx", f"[{disp}] {r.get('from','KW3KW')} -> {r.get('to', call)}  {r.get('context','TX')}", body)
+                sent[_sent_key(udt, body)] = (udt, "tx", f"[{disp}] {r.get('from') or 'TX'} -> {r.get('to', call)}  {r.get('context','TX')}", body)
             for r in outgoing_rows[-200:]:
                 ts = str(r.get("timestamp", ""))
                 udt = self._history_ts_utc(ts)
                 disp = udt.strftime("%Y-%m-%d %H:%M:%S UTC") if udt else ts
                 body = self._clean_msg(r.get("text", ""))
-                sent[_sent_key(udt, body)] = (udt, "tx", f"[{disp}] {r.get('from','KW3KW')} -> {r.get('to', call)}  {r.get('context','TX')}", body)
+                sent[_sent_key(udt, body)] = (udt, "tx", f"[{disp}] {r.get('from') or 'TX'} -> {r.get('to', call)}  {r.get('context','TX')}", body)
 
             top.title(f"QSO History - {call} - {time_label}")
             if not incoming_rows and not sent:

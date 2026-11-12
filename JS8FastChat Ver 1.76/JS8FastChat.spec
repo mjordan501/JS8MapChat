@@ -5,7 +5,7 @@
 # Compatible with PyInstaller 5.x and newer (Python 3.12+)
 #
 # BUILD FROM THE APP ROOT:
-#     cd /d "C:\Users\KW3KW\Documents\Claude AI\JS8MapChat\JS8FastChat Ver 1.75"
+#     cd /d "<your folder>\JS8FastChat Ver 1.75.2"
 #     pyinstaller JS8FastChat.spec
 #   → produces  dist\JS8FastChat.exe   (onefile, same as JS8Map.exe)
 #

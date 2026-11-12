@@ -26,6 +26,58 @@ _SIBLING_WALK_UP_LEVELS = 5
 _MAP_TREE_MARKER = "ham_map_config.json"
 
 
+def _db_written_at(p: Path) -> float:
+    """Latest mtime of a SQLite DB and its -wal sidecar; -1 if absent."""
+    best = -1.0
+    for q in (p, Path(str(p) + "-wal")):
+        try:
+            best = max(best, q.stat().st_mtime)
+        except Exception:
+            pass
+    return best
+
+
+def _newest_db(paths: Iterable[Path | str]) -> str:
+    """The most recently written existing DB among paths, or ''.
+
+    Ties keep the earlier candidate, so the old priority order still breaks
+    ties. The skipped copies are logged once per change of picture."""
+    hits: list[tuple[float, int, Path]] = []
+    seen: set[str] = set()
+    for i, raw in enumerate(paths):
+        if not raw:
+            continue
+        try:
+            p = Path(raw).expanduser()
+            if not p.is_file():
+                continue
+            key = os.path.normcase(str(p.resolve()))
+            if key in seen:
+                continue
+            seen.add(key)
+            hits.append((_db_written_at(p), -i, p))
+        except Exception:
+            pass
+    if not hits:
+        return ""
+    hits.sort(reverse=True)
+    winner = hits[0][2]
+    if len(hits) > 1:
+        sig = (str(winner), tuple(str(h[2]) for h in hits[1:]))
+        if _NEWEST_LOGGED.get(winner.name) != sig:
+            _NEWEST_LOGGED[winner.name] = sig
+            try:
+                from ..utils import debug as _debug
+                for _t, _i, loser in hits[1:]:
+                    _debug(f"{winner.name}: ignoring older copy at {loser} (using {winner})")
+            except Exception:
+                pass
+    return str(winner)
+
+
+_NEWEST_LOGGED: dict = {}
+
+
 class MapDbLocator:
     """Find JS8Map config and DB files without touching the DB on UI startup."""
 
@@ -93,14 +145,32 @@ class MapDbLocator:
         if self._sibling_dirs_cache is not None:
             return self._sibling_dirs_cache
         out: list[Path] = []
+
+        def _take(d: Path) -> None:
+            try:
+                if d.is_dir() and (d / _MAP_TREE_MARKER).is_file() and d not in out:
+                    out.append(d)
+            except Exception:
+                pass
+
         try:
             cur = Path(ROOT_DIR).resolve()
             for _ in range(_SIBLING_WALK_UP_LEVELS):
                 try:
                     for child in sorted(cur.iterdir()):
-                        if child.is_dir() and (child / _MAP_TREE_MARKER).is_file():
-                            if child not in out:
-                                out.append(child)
+                        _take(child)
+                        # 2026-10-19: ONE level deeper too. Spotter lives at
+                        # JS8MapChat\Build Versions\Spotter Mapper Ver 1.1 --
+                        # a GRANDCHILD of the folder FastChat's walk reaches,
+                        # so the children-only scan never saw it and FastChat
+                        # read a stale DB. A backup/ghost tree found this way
+                        # is harmless: _prefer_live_db() now takes the NEWEST.
+                        try:
+                            if child.is_dir():
+                                for grandchild in sorted(child.iterdir()):
+                                    _take(grandchild)
+                        except Exception:
+                            pass
                 except Exception:
                     pass
                 parent = cur.parent
@@ -158,8 +228,19 @@ class MapDbLocator:
         deliberately chosen custom location OUTSIDE AppData is still honored --
         but a live AppData copy overrides a stored path that points elsewhere.
         """
+        # 2026-10-19 (Fix FastChat #1): NEWEST WINS, order no longer decides.
+        # "First existing" still latched -- just onto a different stale file:
+        # %LOCALAPPDATA%\JS8Map\js8_spots.db (left by an old frozen JS8Map
+        # 1.75) beat the LIVE DB that a source-run Spotter writes beside
+        # JS8Map.py. Same disease #34 cured for the mailbox files, same cure:
+        # look everywhere, take the copy written most recently (DB or its
+        # -wal sidecar, since WAL writes may not touch the main file).
+        # A data_dir published by the map in js8map_server.json is searched
+        # too, so a layout nobody predicted still works.
         candidates: list[Path | str] = []
-        # LIVE AppData copies outrank any stored path. See docstring.
+        for folder in self._server_file_data_dirs():
+            for name in names:
+                candidates.append(folder / name)
         for folder in self._appdata_js8map_dirs():
             for name in names:
                 candidates.append(folder / name)
@@ -168,7 +249,27 @@ class MapDbLocator:
         for folder in self._candidate_dirs():
             for name in names:
                 candidates.append(folder / name)
-        return first_existing(candidates)
+        return _newest_db(candidates)
+
+    def _server_file_data_dirs(self) -> list[Path]:
+        """Data folders the RUNNING map advertises in js8map_server.json.
+
+        Optional keys, read if present: "data_dir" (folder) and "spot_db"
+        (full path to js8_spots.db). An older map that writes only "port"
+        simply contributes nothing. Read-only; never creates anything."""
+        out: list[Path] = []
+        try:
+            from ..services.intent_poller import find_server_file, read_intent
+            sf = find_server_file()
+            info = read_intent(sf) if sf else None
+            if info:
+                for key in ("data_dir", "spot_db"):
+                    raw = str(info.get(key, "") or "")
+                    if raw:
+                        self._add_dir(out, raw)
+        except Exception:
+            pass
+        return out
 
     def _find_spot_db(self) -> str:
         return self._prefer_live_db(["js8_spots.db", "js8_spots_TEST.db"], self.app_config.spot_db_path)

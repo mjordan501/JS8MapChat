@@ -1,7 +1,7 @@
 @echo off
 REM ============================================================================
 REM  Build_JS8FastChat.bat  --  rebuild JS8FastChat.exe
-REM  JS8MapChat 1.75        Lives in: JS8FastChat Ver 1.75\  (beside the .spec)
+REM  JS8MapChat 1.76        Lives in: JS8FastChat Ver 1.76\  (beside the .spec)
 REM ============================================================================
 REM  Just double-click it, or run it from a prompt. It cd's to its own folder,
 REM  so it does not matter what directory you are in when you start it.
@@ -30,16 +30,20 @@ if not exist "JS8FastChat.spec" (
     goto :end
 )
 
-REM -- #35 build gate: refuse to build if the two shared_resolver.py copies -----
-REM    have diverged. check_twins.bat lives one level up, at the project root.
-call "%~dp0..\check_twins.bat"
+REM -- #35 build gate: refuse to build if FastChat's shared_resolver.py differs
+REM    from JS8Map Spotter's copy. (1.75.2) It finds Spotter by itself: the
+REM    newest "JS8Map Spotter Vx" folder under Documents, Downloads or
+REM    Desktop. No Spotter found = warn and carry on. Different = stop.
+echo  Checking shared_resolver.py against JS8Map Spotter's copy ...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='SilentlyContinue'; $mineFile=Join-Path 'js8fastchat' 'shared_resolver.py'; $mine=(Get-FileHash -LiteralPath $mineFile).Hash; if(-not $mine){Write-Host '  [ERROR] js8fastchat\shared_resolver.py is missing.'; exit 1}; $roots=@('Documents','Downloads','Desktop') | ForEach-Object { Join-Path $env:USERPROFILE $_ } | Where-Object { Test-Path -LiteralPath $_ }; $all=@(Get-ChildItem -LiteralPath $roots -Recurse -Filter 'shared_resolver.py' -File | Where-Object { $_.FullName -match 'JS8Map Spotter V([0-9.]+)' -and $_.FullName -notmatch '[\\/](build|dist|js8fastchat)[\\/]' }); if($all.Count -eq 0){Write-Host '  [WARN] Spotter''s copy of shared_resolver.py was not found. Check skipped.'; exit 0}; $c=$all | Sort-Object { $null = $_.FullName -match 'JS8Map Spotter V([0-9.]+)'; [version]($matches[1].Trim('.') + '.0') } -Descending | Select-Object -First 1; Write-Host ('  Comparing with: ' + $c.FullName); if((Get-FileHash -LiteralPath $c.FullName).Hash -eq $mine){Write-Host '  [OK] The two copies are identical.'; exit 0}; Write-Host '  [ABORT] The two copies are DIFFERENT. Not building.'; exit 1"
 if errorlevel 1 (
     echo.
-    echo [ABORT] #35 gate failed -- see the message above. NOT building.
-    echo         The two shared_resolver.py copies must be identical first.
+    echo [ABORT] NOT building. Tell Claude: "the shared_resolver.py check failed".
     goto :end
 )
+echo.
 
+:twins_done
 echo [1/4] Removing old build\ and dist\ ...
 if exist "build" rmdir /s /q "build"
 if exist "dist"  rmdir /s /q "dist"
@@ -108,17 +112,17 @@ if errorlevel 1 (
 )
 
 echo.
-if exist "installer_output\JS8FastChat_v1.75.1_Setup.exe" (
+if exist "installer_output\JS8FastChat_v1.76_Setup.exe" (
     echo   INSTALLER OK.
     echo.
-    for %%F in ("installer_output\JS8FastChat_v1.75.1_Setup.exe") do echo   %%~tF   %%~zF bytes   %%~fF
+    for %%F in ("installer_output\JS8FastChat_v1.76_Setup.exe") do echo   %%~tF   %%~zF bytes   %%~fF
     echo.
     echo   ^>^> CHECK THE TIMESTAMP ABOVE. It must be from SECONDS ago.
     echo.
     echo   Give this ONE file to anyone who wants JS8FastChat.
     echo   Install JS8Map FIRST -- FastChat reads the databases it downloads.
 ) else (
-    echo   [FAILED] installer_output\JS8FastChat_v1.75.1_Setup.exe was NOT created.
+    echo   [FAILED] installer_output\JS8FastChat_v1.76_Setup.exe was NOT created.
 )
 
 :end

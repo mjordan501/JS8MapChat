@@ -30,6 +30,8 @@ def main() -> None:
     try:
         if sys.platform.startswith("win"):
             import ctypes as _appid_ctypes
+            # "1.75" is kept on purpose: Windows keys pinned taskbar icons to
+            # this ID, so changing it unpins FastChat. See ARCHITECTURE.md 8.
             _appid_ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
                 "KW3KW.JS8MapChat.JS8FastChat.1.75"
             )

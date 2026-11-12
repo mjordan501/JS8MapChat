@@ -334,7 +334,7 @@ class FastChatPopup:
                 udt = self._ts_utc(ts)
                 disp = udt.strftime("%Y-%m-%d %H:%M:%S UTC") if udt else ts
                 body = self._clean_msg(r.get("text", ""))
-                sent[_sent_key(udt, body)] = (udt, "tx", f"[{disp}] {r.get('from', 'KW3KW')} -> {r.get('to', call)}  {r.get('context', 'TX')}", body)
+                sent[_sent_key(udt, body)] = (udt, "tx", f"[{disp}] {r.get('from') or 'TX'} -> {r.get('to', call)}  {r.get('context', 'TX')}", body)
 
             for r in host.local_outgoing_history_for(call, time_label, needle):
                 ts = str(r.get("timestamp", ""))
@@ -342,7 +342,7 @@ class FastChatPopup:
                 disp = udt.strftime("%Y-%m-%d %H:%M:%S UTC") if udt else ts
                 body = self._clean_msg(r.get("text", ""))
                 # FastChat's own log wins on collision (carries the real context label).
-                sent[_sent_key(udt, body)] = (udt, "tx", f"[{disp}] {r.get('from', 'TX')} -> {r.get('to', call)}  {r.get('context', 'TX')}", body)
+                sent[_sent_key(udt, body)] = (udt, "tx", f"[{disp}] {r.get('from') or 'TX'} -> {r.get('to', call)}  {r.get('context', 'TX')}", body)
 
             events.extend(sent.values())
             _epoch = datetime.min.replace(tzinfo=timezone.utc)

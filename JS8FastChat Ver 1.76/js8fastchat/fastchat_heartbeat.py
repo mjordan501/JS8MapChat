@@ -17,7 +17,7 @@ FILE FORMAT  (js8fastchat_alive.json)
 --------------------------------------
 {
     "pid":     12345,
-    "version": "1.75",
+    "version": "1.76",          <- APP_VERSION from constants.py
     "ts":      1720000000.0      <- float UTC epoch, refreshed every ALIVE_REFRESH_SECONDS
 }
 

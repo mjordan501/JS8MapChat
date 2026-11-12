@@ -4,8 +4,8 @@ import os as _os
 import sys as _sys
 from pathlib import Path
 
-APP_VERSION = "1.75.1"
-APP_BUILD = "2026-09-22-JS8MapChat-Ver-1.75.1"
+APP_VERSION = "1.76"
+APP_BUILD = "2026-10-31-JS8MapChat-Ver-1.76"
 APP_NAME = "JS8MapChat"
 APP_TITLE = f"{APP_NAME} {APP_VERSION} — JS8Map + FastChat Integration"
 

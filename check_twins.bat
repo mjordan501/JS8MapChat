@@ -6,7 +6,7 @@ REM ============================================================================
 REM  The shared-folder resolver (shared_resolver.py) ships as TWO byte-identical
 REM  copies, one in each app tree:
 REM      JS8Map Ver 1.75\shared_resolver.py
-REM      JS8FastChat Ver 1.75\js8fastchat\shared_resolver.py
+REM      JS8FastChat Ver 1.76\js8fastchat\shared_resolver.py
 REM
 REM  If they ever DIVERGE, the two shipped exes carry different resolvers and
 REM  ticket #35 is silently back: they agree on this machine and split on a
@@ -26,7 +26,7 @@ setlocal enabledelayedexpansion
 
 set "ROOT=%~dp0"
 set "MAP_COPY=%ROOT%JS8Map Ver 1.75\shared_resolver.py"
-set "FC_COPY=%ROOT%JS8FastChat Ver 1.75\js8fastchat\shared_resolver.py"
+set "FC_COPY=%ROOT%JS8FastChat Ver 1.76\js8fastchat\shared_resolver.py"
 
 echo.
 echo   [#35 gate] Verifying the two shared_resolver.py copies are identical ...

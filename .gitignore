@@ -154,3 +154,9 @@ JS8Map Ver 1.75/js8_groups.json
 # Generated map output - rewritten on every render. Verified 2026-08-28: 
 # nothing in any .sh, .iss or .spec references it. Untracked per section 2. 
 JS8Map Ver 1.75/ham_map.html
+
+# JS8FastChat 1.76: release packages are built by tools/make_release.py and go
+# on the Releases page, never in the repo. twin_path.txt holds a path on the
+# developer's own PC.
+*.zip
+twin_path.txt

@@ -2,7 +2,7 @@
 
 JS8MapChat maps JS8Call callsigns in real time, with an optional fast chat window for communicating with each selected station.
 
-**JS8Map 1.75.1 and JS8FastChat 1.75 — Windows and Linux**
+**JS8Map 1.75.1 and JS8FastChat 1.76 — Windows and Linux**
 
 **[Download the latest release](../../releases/latest)** — Windows installers and Linux packages.
 
@@ -49,7 +49,9 @@ JS8MapChat talks to JS8Call over its network API. It does not modify JS8Call.
 
 Installers for Windows and packages for Linux are on the [Releases](../../releases) page. Illustrated guides for both apps are in the [docs](docs) folder.
 
-On Linux, install from inside the unpacked package folder.
+**JS8FastChat on Linux:** download the `_Linux.tar.gz` into Downloads and paste the three lines in [the JS8FastChat README](JS8FastChat%20Ver%201.76/README.md#install-on-linux), or follow [Installing JS8FastChat on Linux](docs/Installing_JS8FastChat_on_Linux.pdf).
+
+**JS8Map on Linux:** install from inside the unpacked package folder.
 
 ## Keyboard shortcuts (JS8Map)
 
@@ -76,7 +78,7 @@ Every key raises a short on-screen confirmation.
 
 ## Building from source
 
-Both apps are Python. Windows builds use PyInstaller driven by the `.bat` files in each app folder, with Inno Setup for the installers. Linux builds run in a container and produce a `.tar.gz` package.
+Both apps are Python. Windows builds use PyInstaller driven by the `.bat` files in each app folder, with Inno Setup for the installers. JS8Map's Linux build runs in a container and produces a `.tar.gz` package. JS8FastChat's Linux package is its Python source, run with the system's Python and Tk, so nothing is compiled; `tools/make_release.py` in its folder builds every FastChat package. How FastChat is put together is in its [ARCHITECTURE.md](JS8FastChat%20Ver%201.76/ARCHITECTURE.md).
 
 `shared_resolver.py` exists separately inside each app and the two copies must stay byte-identical. `check_twins.bat` verifies this.
 
