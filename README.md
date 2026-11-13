@@ -16,6 +16,8 @@ JS8MapChat maps JS8Call callsigns in real time, with an optional fast chat windo
 
 **[FCC Lookup](https://github.com/mjordan501/FCC_Lookup)** — offline callsign lookup for U.S. FCC and Canadian amateur licenses. Builds the same `ham.db` database JS8Map uses.
 
+**[JS8Map Spotter](https://github.com/mjordan501/JS8MapSpotter)** — the upgrade of JS8Map 1.75, in its own repository: CommStat StatReps, MCForms and QSOs between other stations on the map, with tagged traffic tables. Installs alongside JS8Map 1.75 and works with JS8FastChat.
+
 ## What is in the suite
 
 JS8MapChat is two programs that work together. Either one runs on its own; run both and a button in each window brings the other to the front.
