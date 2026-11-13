@@ -3,7 +3,7 @@
 How the program is put together, for contributors. For *using* it see the
 JS8FastChat Instructional Guide; for installing it see `README.md` in this
 folder; for open items see the Issues page of
-[JS8MapChat](https://github.com/mjordan501/JS8MapChat).
+[JS8MapChat](https://github.com/HamRadioMadeSimple/JS8MapChat).
 
 FastChat lives in the JS8MapChat repository, beside JS8Map Spotter:
 
@@ -286,7 +286,7 @@ system's Python. Nothing is compiled, so the Linux package is built on the
 Windows PC and the container build box is no longer in the loop.
 
 **Distribution.** Both packages are attached to a release on the
-[JS8MapChat Releases page](https://github.com/mjordan501/JS8MapChat/releases),
+[JS8MapChat Releases page](https://github.com/HamRadioMadeSimple/JS8MapChat/releases),
 and the PDF guides go in the repository's `docs/` folder. Operators download
 with their browser straight into their own Downloads folder; nothing is copied
 between PCs. The install lines in `README.md`, the Linux guide,
